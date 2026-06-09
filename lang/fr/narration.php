@@ -14,11 +14,11 @@ return [
         'sleep' => 'Grand Méchant Loup, ferme les yeux.',
     ],
     'accursed_wolf_father' => [
-        'wake' => 'Père des Loups Maudit, ouvre les yeux. Choisis un joueur à convertir — ou passe ton tour.',
+        'wake' => 'Père des Loups Maudit, ouvre les yeux. Choisis un joueur à convertir  -  ou passe ton tour.',
         'sleep' => 'Père des Loups Maudit, ferme les yeux.',
     ],
     'white_werewolf' => [
-        'wake' => 'Loup-Garou Blanc, ouvre les yeux. Choisis un loup-garou à éliminer — ou passe ton tour.',
+        'wake' => 'Loup-Garou Blanc, ouvre les yeux. Choisis un loup-garou à éliminer  -  ou passe ton tour.',
         'sleep' => 'Loup-Garou Blanc, ferme les yeux.',
     ],
     'seer' => [
@@ -26,7 +26,7 @@ return [
         'sleep' => 'Voyante, ferme les yeux.',
     ],
     'witch' => [
-        'wake' => 'Sorcière, ouvre les yeux. La cible des loups-garous cette nuit est :target. Utilise ta potion de sauvegarde ou de poison — ou ne fais rien.',
+        'wake' => 'Sorcière, ouvre les yeux. La cible des loups-garous cette nuit est :target. Utilise ta potion de sauvegarde ou de poison  -  ou ne fais rien.',
         'sleep' => 'Sorcière, ferme les yeux.',
     ],
     'bodyguard' => [
@@ -46,7 +46,7 @@ return [
         'sleep' => 'Cupidon, ferme les yeux.',
     ],
     'wolf_hound' => [
-        'wake' => 'Chien-Loup, ouvre les yeux. Choisis ton camp — village ou loups-garous.',
+        'wake' => 'Chien-Loup, ouvre les yeux. Choisis ton camp  -  village ou loups-garous.',
         'sleep' => 'Chien-Loup, ferme les yeux.',
     ],
     'little_girl' => [
@@ -62,8 +62,8 @@ return [
         'scapegoat' => 'Le Bouc Émissaire est éliminé par la règle d\'égalité.',
     ],
     'bear' => [
-        'growl' => 'Le Montreur d\'Ours grogne — un loup-garou est proche !',
-        'silence' => 'Le Montreur d\'Ours est silencieux — pas de loups-garous à proximité.',
+        'growl' => 'Le Montreur d\'Ours grogne  -  un loup-garou est proche !',
+        'silence' => 'Le Montreur d\'Ours est silencieux  -  pas de loups-garous à proximité.',
     ],
     'hunter' => [
         'dying' => ':name était le Chasseur. Choisis ta cible finale.',
@@ -72,7 +72,7 @@ return [
         'death' => ':name était un Amoureux. Son/sa partenaire le/la suit dans la mort.',
     ],
     'angel' => [
-        'win' => 'L\'Ange a été éliminé au premier tour — l\'Ange gagne !',
+        'win' => 'L\'Ange a été éliminé au premier tour  -  l\'Ange gagne !',
     ],
     'knight' => [
         'infected' => ':name a été infecté par l\'Épée Rouillée du Chevalier.',

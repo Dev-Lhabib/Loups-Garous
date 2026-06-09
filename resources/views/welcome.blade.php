@@ -2,10 +2,10 @@
 
 @section('content')
 <div class="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-    <div class="w-full max-w-sm mx-auto text-center space-y-10">
+    <div class="w-full max-w-sm mx-auto text-center space-y-10 animate-fadeInUp">
 
         {{-- Locale Toggle --}}
-        <div class="absolute top-6 right-6 flex items-center gap-2 bg-bg-card/80 backdrop-blur-sm rounded-lg p-1 border border-border-default">
+        <div class="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 bg-bg-card/80 backdrop-blur-sm rounded-lg p-1 border border-border-default">
             <a href="{{ route('locale.switch', 'en') }}"
                class="text-sm px-3 py-1.5 rounded-md transition-all duration-200 font-medium
                       {{ app()->getLocale() === 'en' ? 'bg-accent-gold text-bg-primary shadow-lg' : 'text-text-muted hover:text-text-primary' }}">
@@ -20,7 +20,7 @@
 
         {{-- Brand --}}
         <div class="space-y-4">
-            <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 border-2 border-accent-gold/30 flex items-center justify-center">
+            <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 border-2 border-accent-gold/30 flex items-center justify-center animate-heartbeat">
                 <span class="text-4xl">🐺</span>
             </div>
             <h1 class="font-serif text-4xl md:text-5xl text-text-primary font-bold tracking-wide">{{ config('app.name') }}</h1>

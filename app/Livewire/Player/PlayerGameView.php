@@ -60,6 +60,18 @@ class PlayerGameView extends Component
         ];
     }
 
+    public function ping(): void
+    {
+        $state = $this->room?->gameState;
+        if (!$state) return;
+
+        $data = $state->data;
+        $data['player_heartbeats'] = $data['player_heartbeats'] ?? [];
+        $data['player_heartbeats'][$this->player->id] = now()->toIso8601String();
+        $state->data = $data;
+        $state->save();
+    }
+
     public function readyUp()
     {
         if (!$this->state || $this->state->phase !== 'waiting') return;
@@ -91,8 +103,11 @@ class PlayerGameView extends Component
     public function hydrate(): void
     {
         $room = $this->room ?? null;
-        if ($room && !$room->gameState) {
-            $this->redirect(route('lobby.player', $room));
+        if ($room) {
+            $fresh = Room::find($room->id);
+            if (!$fresh || !$fresh->gameState) {
+                $this->redirect(route('lobby.player', $room));
+            }
         }
     }
 
@@ -193,6 +208,16 @@ class PlayerGameView extends Component
     public function onGameReset()
     {
         $this->js("window.location.href = '" . route('lobby.player', $this->room) . "'");
+    }
+
+    public function checkGameState(): void
+    {
+        if (!$this->room || !$this->room->id) return;
+
+        $fresh = Room::find($this->room->id);
+        if (!$fresh || $fresh->status === 'waiting' || !$fresh->gameState) {
+            $this->redirect(route('lobby.player', $this->room));
+        }
     }
 
     public function render()

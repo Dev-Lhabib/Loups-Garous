@@ -1,19 +1,31 @@
-<div class="min-h-screen"
-     x-data="{
-         showOverlay: false,
-         phaseLabel: '',
-         phaseClass: '',
-         sidebarTab: 'status',
-         showRoleModal: false,
-         modalPlayer: null,
-     }"
-     @transition-phase.window="
-         showOverlay = true;
-         phaseLabel = $event.detail.label;
-         phaseClass = $event.detail.class;
-         setTimeout(() => { showOverlay = false; }, 1500);
-     "
->
+<div class="min-h-screen" x-data="{
+     showOverlay: false,
+     phaseLabel: '',
+     phaseClass: '',
+     sidebarTab: 'status',
+     showRoleModal: false,
+     modalPlayer: null,
+     autoResolveCountdown: null,
+     autoResolveTimer: null,
+ }" x-init="
+     $wire.$on('auto-resolve-countdown', (data) => {
+         autoResolveCountdown = data.seconds;
+         if (autoResolveTimer) clearInterval(autoResolveTimer);
+         autoResolveTimer = setInterval(() => {
+             autoResolveCountdown--;
+             if (autoResolveCountdown <= 0) {
+                 clearInterval(autoResolveTimer);
+                 autoResolveTimer = null;
+             }
+         }, 1000);
+     });
+ "
+ @transition-phase.window="
+     showOverlay = true;
+     phaseLabel = $event.detail.label;
+     phaseClass = $event.detail.class;
+     setTimeout(() => { showOverlay = false; }, 1500);
+ ">
     {{-- Phase transition overlay --}}
     <div x-show="showOverlay"
          class="fixed inset-0 z-50 flex items-center justify-center"
@@ -25,7 +37,14 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          x-cloak>
-        <h2 class="text-4xl font-serif font-bold text-text-primary" x-text="phaseLabel"></h2>
+        <div class="text-center">
+            <h2 class="text-4xl md:text-5xl font-serif font-bold text-text-primary animate-fadeInScale" x-text="phaseLabel"></h2>
+            <div class="flex justify-center gap-2 mt-4">
+                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-200"></span>
+                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-400"></span>
+                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-600"></span>
+            </div>
+        </div>
     </div>
 
     {{-- Role detail modal --}}
@@ -75,7 +94,36 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
+    <div class="max-w-7xl mx-auto p-3 md:p-6 space-y-4">
+
+        {{-- AUTO-RESOLVE BANNER --}}
+        @if($state->phase === 'night' && $autoResolveTimeLeft !== null)
+            <div class="glass-panel border border-accent-green/50 p-3 flex items-center justify-between gap-3 animate-slideInDown">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
+                    <span class="text-xs text-accent-green font-semibold">{{ __('ui.night.all_actions_submitted') }}</span>
+                    <span x-show="autoResolveCountdown !== null && autoResolveCountdown > 0" class="text-xs text-accent-green font-mono" x-text="'Resolving in ' + autoResolveCountdown + 's'"></span>
+                </div>
+                <button wire:click="advancePhase('day')"
+                        class="px-3 py-1.5 bg-accent-green text-white text-xs font-semibold rounded-lg hover:bg-accent-green/90 transition-colors">
+                    {{ __('ui.button.resolve_now') }}
+                </button>
+            </div>
+        @endif
+
+        {{-- NIGHT TIMEOUT WARNING --}}
+        @if($state->phase === 'night' && $nightRemaining !== null && $nightRemaining <= 30)
+            <div class="glass-panel border border-accent-red/50 p-3 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-accent-red animate-ping"></span>
+                    <span class="text-xs text-accent-red font-semibold">{{ __('ui.night.auto_resolve_imminent') }} ({{ $nightRemaining }}s)</span>
+                </div>
+                <button wire:click="forceResolve"
+                        class="px-3 py-1.5 bg-accent-red text-white text-xs font-semibold rounded-lg hover:bg-accent-red/90 transition-colors">
+                    {{ __('ui.button.force_resolve') }}
+                </button>
+            </div>
+        @endif
 
         {{-- ===== PHASE HEADER ===== --}}
         <x-phase-header
@@ -102,12 +150,22 @@
                     @endphp
                     <button wire:click="advancePhase('{{ $target }}')"
                             wire:confirm="{{ __('ui.narrator.confirm_transition') }}"
-                            class="px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                            class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
                                    {{ $btnConfig['bg'] }} {{ $btnConfig['hover'] }} {{ $btnConfig['text'] }}
                                    hover:scale-105 active:scale-95">
                         {{ __("ui.phase.go_to_{$target}") }}
                     </button>
                 @endforeach
+
+                {{-- FORCE RESOLVE (emergency) --}}
+                @if($state->phase === 'night' && count($pendingRoles) > 0)
+                    <button wire:click="forceResolve"
+                            wire:confirm="{{ __('ui.night.force_resolve_confirm') }}"
+                            class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                   bg-accent-red-dark hover:bg-accent-red text-white hover:scale-105 active:scale-95">
+                        {{ __('ui.button.force_resolve') }}
+                    </button>
+                @endif
             </div>
         @endif
 
@@ -124,10 +182,10 @@
                             <span class="w-2 h-2 rounded-full bg-accent-blue animate-pulse animation-delay-400"></span>
                             <span class="w-2 h-2 rounded-full bg-accent-blue animate-pulse animation-delay-600"></span>
                         </div>
-                        <span class="text-xs text-accent-blue">{{ __('ui.narrator.pending_actions') }}:</span>
+                        <span class="text-xs text-accent-blue font-medium">{{ __('ui.narrator.pending_actions') }}:</span>
                         <div class="flex flex-wrap gap-1">
-                            @foreach(array_unique($pendingRoles) as $roleKey)
-                                <span class="text-[10px] bg-accent-blue/10 text-accent-cyan px-1.5 py-0.5 rounded-full">
+                            @foreach($pendingRoleKeys as $roleKey)
+                                <span class="text-[10px] bg-accent-blue/10 text-accent-cyan px-1.5 py-0.5 rounded-full font-medium">
                                     {{ __("roles.{$roleKey}.name") }}
                                 </span>
                             @endforeach
@@ -135,12 +193,39 @@
                     </div>
                 @endif
 
+                {{-- NIGHT TIMER --}}
+                @if($state->phase === 'night')
+                    @php
+                        $pct = $nightRemaining > 0 ? round(($nightRemaining / 120) * 100) : 0;
+                        $timerColor = $nightRemaining <= 30 ? 'bg-accent-red' : ($nightRemaining <= 60 ? 'bg-accent-gold' : 'bg-accent-blue');
+                    @endphp
+                    <div class="glass-panel border border-border-default p-3">
+                        <div class="flex items-center justify-between text-xs mb-1.5">
+                            <span class="text-text-muted">{{ __('ui.night.time_remaining') }}</span>
+                            <span class="font-mono {{ $nightRemaining <= 30 ? 'text-accent-red font-bold animate-pulse' : 'text-text-secondary' }}">
+                                {{ gmdate('i:s', $nightRemaining) }}
+                            </span>
+                        </div>
+                        <div class="h-1.5 bg-bg-surface rounded-full overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-1000 ease-linear {{ $timerColor }}"
+                                 style="width: {{ $pct }}%">
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-text-muted mt-1">
+                            <span>{{ __('ui.night.completed') }}: {{ count($completedRoleKeys) }}</span>
+                            <span>{{ __('ui.night.pending') }}: {{ count($pendingRoleKeys) }}</span>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Player grid --}}
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 md:gap-3">
                     @forelse($players as $p)
                         @php
                             $isLover = isset($loverMap[$p->id]);
                             $isEnchanted = in_array($p->id, $enchantedIds);
+                            $isDisconnected = collect($disconnectedPlayers)->firstWhere('id', $p->id);
+                            $hasPending = collect($pendingRoles)->firstWhere('player_id', $p->id);
                             $factionColors = [
                                 'village' => 'border-l-accent-blue',
                                 'werewolves' => 'border-l-accent-red',
@@ -163,6 +248,8 @@
                         ]) }}"
                              class="relative bg-bg-card border border-border-default rounded-xl p-3 cursor-pointer transition-all duration-200 hover:border-accent-gold/40 hover:shadow-lg group
                                     {{ !$p->is_alive ? 'opacity-50 grayscale' : 'hover:glow-gold' }}
+                                    {{ $hasPending ? 'ring-1 ring-accent-blue/50 animate-pulse' : '' }}
+                                    {{ $isDisconnected ? 'opacity-60 ring-1 ring-accent-red/50' : '' }}
                                     border-l-2 {{ $borderColor }}">
                             <div class="flex items-center gap-2.5">
                                 <div class="relative flex-shrink-0">
@@ -171,6 +258,8 @@
                                     </div>
                                     @if(!$p->is_alive)
                                         <div class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-red rounded-full flex items-center justify-center text-[10px]">💀</div>
+                                    @elseif($isDisconnected)
+                                        <div class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-red-dark rounded-full flex items-center justify-center text-[8px]">⚠</div>
                                     @elseif($isLover)
                                         <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-pink rounded-full flex items-center justify-center text-[8px]">💕</div>
                                     @elseif($isEnchanted)
@@ -180,6 +269,9 @@
                                 <div class="flex-1 min-w-0">
                                     <p class="text-text-primary text-sm font-medium truncate {{ !$p->is_alive ? 'line-through text-text-muted' : '' }}">
                                         {{ $p->nickname }}
+                                        @if($isDisconnected)
+                                            <span class="text-accent-red text-[10px] ml-1">({{ __('ui.game.disconnected') }})</span>
+                                        @endif
                                     </p>
                                     @if($p->role)
                                         <div class="flex items-center gap-1 mt-0.5">
@@ -202,26 +294,26 @@
             <div class="lg:col-span-2 space-y-4">
                 <div class="glass-panel border border-border-default overflow-hidden">
                     {{-- Tabs --}}
-                    <div class="flex border-b border-border-default">
+                    <div class="flex border-b border-border-default overflow-x-auto">
                         <button @click="sidebarTab = 'status'"
-                                class="flex-1 px-3 py-2.5 text-xs font-medium transition-all duration-200"
+                                class="flex-1 px-3 py-3 text-xs font-medium transition-all duration-200 whitespace-nowrap"
                                 :class="sidebarTab === 'status' ? 'text-accent-gold border-b-2 border-accent-gold bg-accent-gold/5' : 'text-text-muted hover:text-text-secondary'">
                             📊 {{ __('ui.narrator.tab_status') }}
                         </button>
                         <button @click="sidebarTab = 'night'"
-                                class="flex-1 px-3 py-2.5 text-xs font-medium transition-all duration-200"
+                                class="flex-1 px-3 py-3 text-xs font-medium transition-all duration-200 whitespace-nowrap"
                                 :class="sidebarTab === 'night' ? 'text-accent-blue border-b-2 border-accent-blue bg-accent-blue/5' : 'text-text-muted hover:text-text-secondary'">
                             🌙 {{ __('ui.narrator.tab_night') }}
                         </button>
                         <button @click="sidebarTab = 'log'"
-                                class="flex-1 px-3 py-2.5 text-xs font-medium transition-all duration-200"
+                                class="flex-1 px-3 py-3 text-xs font-medium transition-all duration-200 whitespace-nowrap"
                                 :class="sidebarTab === 'log' ? 'text-accent-gold border-b-2 border-accent-gold bg-accent-gold/5' : 'text-text-muted hover:text-text-secondary'">
                             📜 {{ __('ui.narrator.tab_log') }}
                         </button>
-                        <button @click="sidebarTab = 'history'"
-                                class="flex-1 px-3 py-2.5 text-xs font-medium transition-all duration-200"
-                                :class="sidebarTab === 'history' ? 'text-accent-purple border-b-2 border-accent-purple bg-accent-purple/5' : 'text-text-muted hover:text-text-secondary'">
-                            📋 {{ __('ui.narrator.tab_history') }}
+                        <button @click="sidebarTab = 'debug'"
+                                class="flex-1 px-3 py-3 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                                :class="sidebarTab === 'debug' ? 'text-accent-purple border-b-2 border-accent-purple bg-accent-purple/5' : 'text-text-muted hover:text-text-secondary'">
+                            🔧 {{ __('ui.narrator.tab_debug') }}
                         </button>
                     </div>
 
@@ -229,7 +321,7 @@
                     <div class="p-3 max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-thin">
                         {{-- TAB: Status --}}
                         <div x-show="sidebarTab === 'status'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
-                            <div class="space-y-3">
+                            <div class="space-y-4">
                                 {{-- Faction counts --}}
                                 <div>
                                     <h4 class="text-xs uppercase tracking-wider text-text-muted font-semibold mb-2">{{ __('ui.narrator.game_status') }}</h4>
@@ -265,7 +357,7 @@
                                 {{-- Lovers info --}}
                                 @if(!empty($loverMap))
                                     <div>
-                                        <h4 class="text-xs uppercase tracking-wider text-accent-pink font-semibold mb-2">💕 {{ __('ui.game.lovers') }}</h4>
+                                        <h4 class="text-xs uppercase tracking-wider text-accent-pink font-semibold mb-2 flex items-center gap-1">💕 {{ __('ui.game.lovers') }}</h4>
                                         <div class="space-y-1">
                                             @foreach($loverMap as $pid => $partnerId)
                                                 @if($pid < $partnerId)
@@ -274,8 +366,8 @@
                                                         $p2 = $players->firstWhere('id', $partnerId);
                                                     @endphp
                                                     @if($p1 && $p2)
-                                                        <div class="text-xs text-text-secondary bg-accent-pink/5 rounded px-2 py-1">
-                                                            {{ $p1->nickname }} 💕 {{ $p2->nickname }}
+                                                        <div class="text-xs text-text-secondary bg-accent-pink/5 rounded px-2 py-1 border border-accent-pink/20">
+                                                            💕 {{ $p1->nickname }} ↔ {{ $p2->nickname }}
                                                         </div>
                                                     @endif
                                                 @endif
@@ -287,13 +379,13 @@
                                 {{-- Enchanted info --}}
                                 @if(!empty($enchantedIds))
                                     <div>
-                                        <h4 class="text-xs uppercase tracking-wider text-accent-green font-semibold mb-2">✦ {{ __('ui.game.enchanted') }}</h4>
+                                        <h4 class="text-xs uppercase tracking-wider text-accent-green font-semibold mb-2 flex items-center gap-1">✦ {{ __('ui.game.enchanted') }}</h4>
                                         <div class="space-y-1">
                                             @foreach($enchantedIds as $eid)
                                                 @php $ep = $players->firstWhere('id', $eid); @endphp
                                                 @if($ep)
-                                                    <div class="text-xs text-text-secondary bg-accent-green/5 rounded px-2 py-1">
-                                                        {{ $ep->nickname }}
+                                                    <div class="text-xs text-text-secondary bg-accent-green/5 rounded px-2 py-1 border border-accent-green/20">
+                                                        ✦ {{ $ep->nickname }}
                                                     </div>
                                                 @endif
                                             @endforeach
@@ -303,19 +395,34 @@
 
                                 {{-- Alive/Dead player lists --}}
                                 <div>
-                                    <h4 class="text-xs uppercase tracking-wider text-accent-green font-semibold mb-2">✓ {{ __('ui.game.alive') }} ({{ $alivePlayers->count() }})</h4>
+                                    <h4 class="text-xs uppercase tracking-wider text-accent-green font-semibold mb-2 flex items-center gap-1">✓ {{ __('ui.game.alive') }} ({{ $alivePlayers->count() }})</h4>
                                     <div class="flex flex-wrap gap-1">
                                         @foreach($alivePlayers as $ap)
-                                            <span class="text-[11px] bg-accent-green/10 text-accent-green px-2 py-0.5 rounded-full">{{ $ap->nickname }}</span>
+                                            <span class="text-[11px] bg-accent-green/10 text-accent-green px-2 py-0.5 rounded-full font-medium">{{ $ap->nickname }}</span>
                                         @endforeach
                                     </div>
                                 </div>
                                 @if($deadPlayers->isNotEmpty())
                                     <div>
-                                        <h4 class="text-xs uppercase tracking-wider text-accent-red font-semibold mb-2">💀 {{ __('ui.game.dead') }} ({{ $deadPlayers->count() }})</h4>
+                                        <h4 class="text-xs uppercase tracking-wider text-accent-red font-semibold mb-2 flex items-center gap-1">💀 {{ __('ui.game.dead') }} ({{ $deadPlayers->count() }})</h4>
                                         <div class="flex flex-wrap gap-1">
                                             @foreach($deadPlayers as $dp)
                                                 <span class="text-[11px] bg-accent-red/10 text-accent-red/70 px-2 py-0.5 rounded-full line-through">{{ $dp->nickname }}</span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Disconnected players --}}
+                                @if(count($disconnectedPlayers) > 0)
+                                    <div>
+                                        <h4 class="text-xs uppercase tracking-wider text-accent-red-dark font-semibold mb-2">⚠ {{ __('ui.game.disconnected') }} ({{ count($disconnectedPlayers) }})</h4>
+                                        <div class="space-y-1">
+                                            @foreach($disconnectedPlayers as $dp)
+                                                <div class="text-xs bg-accent-red/10 text-accent-red px-2 py-1 rounded border border-accent-red/20 flex justify-between">
+                                                    <span>{{ $dp['nickname'] }}</span>
+                                                    <span class="text-[10px] opacity-70">{{ $dp['elapsed'] }}s ago</span>
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
@@ -327,17 +434,14 @@
                         <div x-show="sidebarTab === 'night'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
                             <div class="space-y-3">
                                 @if($state->phase === 'night')
-                                    {{-- Night sequence tracker --}}
                                     @php
                                         $submittedRoles = collect($nightActionFeed)->pluck('role_key')->unique()->values()->toArray();
                                     @endphp
                                     <x-night-sequence
                                         :nightOrder="$nightOrder"
-                                        :pendingRoles="$pendingRoles"
+                                        :pendingRoles="$pendingRoleKeys"
                                         :submittedRoles="$submittedRoles"
                                     />
-
-                                    {{-- Night action timeline --}}
                                     <x-night-timeline :actions="$nightActionFeed" />
                                 @elseif($state->phase === 'voting')
                                     <x-vote-tally
@@ -347,7 +451,7 @@
                                         :players="$players"
                                     />
                                 @else
-                                    <div class="text-center py-8">
+                                    <div class="text-center py-12">
                                         <p class="text-text-muted text-xs">{{ __('ui.narrator.no_actions_yet') }}</p>
                                     </div>
                                 @endif
@@ -359,9 +463,70 @@
                             <x-game-timeline :entries="$gameLog" />
                         </div>
 
-                        {{-- TAB: Action History --}}
-                        <div x-show="sidebarTab === 'history'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
-                            <x-action-history :actions="$actionHistory" />
+                        {{-- TAB: Debug --}}
+                        <div x-show="sidebarTab === 'debug'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
+                            <div class="space-y-3">
+                                <div class="bg-bg-surface/50 rounded-lg p-3 border border-border-default">
+                                    <h4 class="text-xs uppercase tracking-wider text-accent-purple font-semibold mb-2">🔧 {{ __('ui.narrator.debug_info') }}</h4>
+                                    <div class="space-y-1.5 text-xs font-mono">
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.phase.current_phase') }}</span>
+                                            <span class="text-accent-gold font-semibold">{{ $state->phase }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.game.round') }}</span>
+                                            <span class="text-text-primary">{{ $state->round }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.game.players_alive') }}</span>
+                                            <span class="text-text-primary">{{ $totalAlive }} / {{ $players->count() }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.night.pending_roles') }}</span>
+                                            <span class="{{ count($pendingRoleKeys) > 0 ? 'text-accent-red' : 'text-accent-green' }}">
+                                                {{ count($pendingRoleKeys) > 0 ? implode(', ', $pendingRoleKeys) : 'None' }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.night.completed_roles') }}</span>
+                                            <span class="text-accent-green">{{ count($completedRoleKeys) > 0 ? implode(', ', $completedRoleKeys) : 'None' }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.game.disconnected') }}</span>
+                                            <span class="{{ count($disconnectedPlayers) > 0 ? 'text-accent-red' : 'text-accent-green' }}">
+                                                {{ count($disconnectedPlayers) }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.night.time_elapsed') }}</span>
+                                            <span class="text-text-primary">{{ gmdate('i:s', $nightElapsed) }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.night.time_remaining') }}</span>
+                                            <span class="{{ $nightRemaining <= 30 ? 'text-accent-red font-bold' : 'text-text-primary' }}">
+                                                {{ gmdate('i:s', $nightRemaining) }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-text-muted">{{ __('ui.night.auto_resolve') }}</span>
+                                            <span class="{{ $autoResolveTimeLeft !== null ? 'text-accent-green' : 'text-text-muted' }}">
+                                                {{ $autoResolveTimeLeft !== null ? $autoResolveTimeLeft . 's' : 'Waiting' }}
+                                            </span>
+                                        </div>
+                                        @if(count($disconnectedPlayers) > 0)
+                                            <div class="pt-2 border-t border-border-default">
+                                                <p class="text-accent-red text-[10px] font-semibold mb-1">{{ __('ui.game.disconnected') }}:</p>
+                                                @foreach($disconnectedPlayers as $dp)
+                                                    <div class="flex justify-between text-[10px]">
+                                                        <span class="text-text-secondary">{{ $dp['nickname'] }}</span>
+                                                        <span class="text-text-muted">{{ $dp['elapsed'] }}s</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

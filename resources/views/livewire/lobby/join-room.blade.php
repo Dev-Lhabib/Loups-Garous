@@ -1,7 +1,7 @@
 <div class="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-    <div class="w-full max-w-sm mx-auto text-center space-y-8">
+    <div class="w-full max-w-sm mx-auto text-center space-y-8 animate-fadeInUp">
 
-        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 border-2 border-accent-gold/30 flex items-center justify-center">
+        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 border-2 border-accent-gold/30 flex items-center justify-center animate-heartbeat">
             <span class="text-3xl">👋</span>
         </div>
 
