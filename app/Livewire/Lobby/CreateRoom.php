@@ -20,7 +20,7 @@ class CreateRoom extends Component
 
         cookie()->queue(cookie()->make('session_token', $player->session_token, 1440, '/', null, false, true));
 
-        $this->dispatch('room-created', redirectUrl: route('lobby.narrator', $room->code));
+        $this->redirect(route('lobby.narrator', $room->code));
     }
 
     public function render()

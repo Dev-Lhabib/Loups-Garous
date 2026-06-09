@@ -22,7 +22,7 @@ class JoinRoom extends Component
 
         $player = $lobbyService->joinRoom($room, $this->nickname, request());
 
-        $this->dispatch('room-joined', redirectUrl: route('lobby.player', $room->code));
+        $this->redirect(route('lobby.player', $room->code));
     }
 
     public function render()
