@@ -312,7 +312,7 @@ class NarratorDashboard extends Component
     {
         return match ($phase) {
             'night' => ['day', 'finished'],
-            'day' => ['voting'],
+            'day' => ['voting', 'night'],
             'voting' => ['night', 'finished'],
             'finished' => [],
             default => [],

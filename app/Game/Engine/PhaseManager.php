@@ -12,7 +12,7 @@ class PhaseManager
     private array $validTransitions = [
         'waiting' => ['night'],
         'night' => ['day', 'finished'],
-        'day' => ['voting'],
+        'day' => ['voting', 'night'],
         'voting' => ['night', 'day', 'finished'],
         'finished' => [],
     ];
@@ -29,9 +29,10 @@ class PhaseManager
 
         if ($from === 'voting') {
             Vote::where('game_state_id', $state->id)->delete();
-            if ($toPhase === 'night') {
-                $state->round = ($state->round ?? 1) + 1;
-            }
+        }
+
+        if ($toPhase === 'night' && ($from === 'voting' || $from === 'day')) {
+            $state->round = ($state->round ?? 1) + 1;
         }
 
         $state->phase = $toPhase;

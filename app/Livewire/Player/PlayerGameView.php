@@ -192,7 +192,7 @@ class PlayerGameView extends Component
 
     public function onGameReset()
     {
-        $this->redirect(route('lobby.player', $this->room));
+        $this->js("window.location.href = '" . route('lobby.player', $this->room) . "'");
     }
 
     public function render()

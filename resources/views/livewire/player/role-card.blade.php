@@ -15,6 +15,7 @@
         <div class="text-center">
             <div class="text-5xl mb-3 text-[#C8922A]/40">?</div>
             <p class="text-[#9A8A6A] text-sm tracking-widest uppercase">{{ __('ui.role.hold_to_reveal') }}</p>
+            <p class="text-[#6A5A4A] text-xs mt-2">{{ $player->nickname }}</p>
         </div>
     </div>
 
