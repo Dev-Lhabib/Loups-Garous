@@ -1,34 +1,35 @@
 <div class="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-    <div class="w-full max-w-sm mx-auto">
-        <h1 class="font-serif text-3xl text-[#E8D9B5] mb-8 text-center">{{ __('ui.lobby.create_room') }}</h1>
+    <div class="w-full max-w-sm mx-auto text-center space-y-8">
+
+        <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-accent-gold/30 to-accent-gold/5 border-2 border-accent-gold/30 flex items-center justify-center">
+            <span class="text-3xl">🐺</span>
+        </div>
+
+        <div class="space-y-2">
+            <h1 class="font-serif text-3xl font-bold text-text-primary">{{ __('ui.lobby.create_room') }}</h1>
+            <p class="text-text-muted text-sm">{{ __('ui.home.subtitle') }}</p>
+        </div>
 
         <form wire:submit="submit" class="space-y-4">
-            <div>
-                <label for="nickname" class="block text-sm text-[#9A8A6A] mb-2">{{ __('ui.lobby.your_nickname') }}</label>
-                <input
-                    wire:model="nickname"
-                    type="text"
-                    id="nickname"
-                    maxlength="30"
-                    class="w-full px-4 py-3 bg-[#1A1510] border border-[#251E16] text-[#E8D9B5] rounded-lg focus:outline-none focus:border-[#C8922A] transition-colors"
-                    placeholder="{{ __('ui.lobby.nickname_placeholder') }}"
-                >
-                @error('nickname') <p class="text-[#8B2020] text-sm mt-1">{{ $message }}</p> @enderror
+            <div class="text-left">
+                <label for="nickname" class="block text-sm text-text-muted mb-1.5 font-medium">{{ __('ui.lobby.your_nickname') }}</label>
+                <input type="text"
+                       id="nickname"
+                       wire:model="nickname"
+                       placeholder="{{ __('ui.lobby.nickname_placeholder') }}"
+                       maxlength="20"
+                       class="w-full px-4 py-3 bg-bg-surface border border-border-default rounded-xl text-text-primary placeholder:text-text-muted/50 focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/30 outline-none transition-all duration-200"/>
+                @error('nickname') <p class="text-accent-red text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <button type="submit" class="w-full py-3 px-6 bg-[#C8922A] text-[#0D0D0D] font-semibold rounded-lg hover:bg-[#D4A235] transition-colors duration-200">
+            <button type="submit"
+                    class="w-full py-4 px-6 bg-accent-gold text-bg-primary font-bold rounded-xl hover:bg-accent-gold-dark transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-lg text-center">
                 {{ __('ui.button.create_room') }}
             </button>
+
+            <a href="{{ route('rooms.join') }}" class="block text-sm text-text-muted hover:text-accent-gold transition-colors">
+                {{ __('ui.button.join_room') }}
+            </a>
         </form>
     </div>
-
-    @script
-        <script>
-            $wire.on('room-created', (event) => {
-                setTimeout(() => {
-                    window.location.href = event.redirectUrl;
-                }, 100);
-            });
-        </script>
-    @endscript
 </div>
