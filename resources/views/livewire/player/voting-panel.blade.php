@@ -1,4 +1,4 @@
-<div class="bg-[#1A1510] border border-[#251E16] rounded-xl p-6 w-full max-w-md"
+<div wire:poll.3s class="bg-[#1A1510] border border-[#251E16] rounded-xl p-6 w-full max-w-md"
      x-data="{ revealed: false }">
     @if($banned)
         <div class="text-center py-4">

@@ -1,4 +1,4 @@
-<div class="min-h-screen flex flex-col items-center justify-center p-8"
+<div wire:poll.5s class="min-h-screen flex flex-col items-center justify-center p-8"
      x-data="{
          showOverlay: false,
          phaseLabel: '',

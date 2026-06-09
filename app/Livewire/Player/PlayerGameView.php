@@ -54,6 +54,9 @@ class PlayerGameView extends Component
             "echo-private:player.{$this->player->id},RoleAssigned" => 'onRoleAssigned',
             "echo-private:player.{$this->player->id},SeerResultReady" => 'onSeerResult',
             "echo-private:player.{$this->player->id},FoxResultReady" => 'onFoxResult',
+            "echo-private:room.{$roomId},AllPlayersReady" => '$refresh',
+            "echo-private:room.{$roomId},PlayerJoined" => '$refresh',
+            "echo-private:room.{$roomId},PlayerLeft" => '$refresh',
         ];
     }
 
