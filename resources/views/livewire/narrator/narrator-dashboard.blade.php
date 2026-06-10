@@ -1,6 +1,8 @@
-<div class="min-h-screen" x-data="{
+ <div wire:poll.3s="tick" class="min-h-screen" x-data="{
      showOverlay: false,
      phaseLabel: '',
+     phaseSubtitle: '',
+     phaseIcon: '',
      phaseClass: '',
      sidebarTab: 'status',
      showRoleModal: false,
@@ -23,10 +25,12 @@
  @transition-phase.window="
      showOverlay = true;
      phaseLabel = $event.detail.label;
+     phaseSubtitle = $event.detail.subtitle || '';
+     phaseIcon = $event.detail.icon || '';
      phaseClass = $event.detail.class;
-     setTimeout(() => { showOverlay = false; }, 1500);
+     setTimeout(() => { showOverlay = false; }, 2000);
  ">
-    {{-- Phase transition overlay --}}
+    {{-- Phase transition overlay - cinematic --}}
     <div x-show="showOverlay"
          class="fixed inset-0 z-50 flex items-center justify-center"
          :class="phaseClass"
@@ -37,8 +41,10 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          x-cloak>
-        <div class="text-center">
-            <h2 class="text-4xl md:text-5xl font-serif font-bold text-text-primary animate-fadeInScale" x-text="phaseLabel"></h2>
+        <div class="text-center space-y-4">
+            <div class="text-6xl md:text-7xl animate-floatSlow" x-text="phaseIcon"></div>
+            <h2 class="text-4xl md:text-6xl font-serif font-bold text-text-primary animate-fadeInScale animate-bannerPulse" x-text="phaseLabel"></h2>
+            <p x-show="phaseSubtitle" class="text-lg md:text-xl text-text-secondary animate-slideUpReveal" style="animation-delay: 300ms;" x-text="phaseSubtitle"></p>
             <div class="flex justify-center gap-2 mt-4">
                 <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-200"></span>
                 <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-400"></span>
@@ -174,46 +180,97 @@
 
             {{-- LEFT: Player grid --}}
             <div class="lg:col-span-3 space-y-4">
-                {{-- Pending roles banner (night phase) --}}
-                @if($state->phase === 'night' && count($pendingRoles) > 0)
-                    <div class="glass-panel border border-accent-blue/30 p-3 flex items-center gap-3">
-                        <div class="flex gap-1">
-                            <span class="w-2 h-2 rounded-full bg-accent-blue animate-pulse animation-delay-200"></span>
-                            <span class="w-2 h-2 rounded-full bg-accent-blue animate-pulse animation-delay-400"></span>
-                            <span class="w-2 h-2 rounded-full bg-accent-blue animate-pulse animation-delay-600"></span>
-                        </div>
-                        <span class="text-xs text-accent-blue font-medium">{{ __('ui.narrator.pending_actions') }}:</span>
-                        <div class="flex flex-wrap gap-1">
-                            @foreach($pendingRoleKeys as $roleKey)
-                                <span class="text-[10px] bg-accent-blue/10 text-accent-cyan px-1.5 py-0.5 rounded-full font-medium">
-                                    {{ __("roles.{$roleKey}.name") }}
+                {{-- NIGHT PROGRESS SECTION --}}
+                @if($state->phase === 'night')
+                    @php
+                        $totalNightRoles = count($nightOrder);
+                        $completedCount = count($completedRoleKeys);
+                        $pendingCount = count($pendingRoleKeys);
+                        $progressPct = $totalNightRoles > 0 ? round(($completedCount / $totalNightRoles) * 100) : 0;
+                        $timePct = $nightRemaining > 0 ? round(($nightRemaining / 120) * 100) : 0;
+                        $timerColor = $nightRemaining <= 30 ? 'bg-accent-red' : ($nightRemaining <= 60 ? 'bg-accent-gold' : 'bg-accent-blue');
+                    @endphp
+
+                    {{-- Night progress bar --}}
+                    <div class="glass-panel border border-border-default overflow-hidden">
+                        <div class="p-3">
+                            <div class="flex items-center justify-between text-xs mb-2">
+                                <span class="text-text-muted">{{ __('ui.night.night_progress') }}</span>
+                                <span class="font-mono {{ $timerColor == 'bg-accent-red' ? 'text-accent-red font-bold animate-pulse' : 'text-text-secondary' }}">
+                                    {{ gmdate('i:s', $nightRemaining) }}
                                 </span>
-                            @endforeach
+                            </div>
+                            <div class="h-2 bg-bg-surface rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-1000 ease-linear {{ $timerColor }} animate-progressPulse"
+                                     style="width: {{ $timePct }}%">
+                                </div>
+                            </div>
+                        </div>
+                        {{-- Role progress chips --}}
+                        <div class="px-3 pb-3">
+                            <div class="flex items-center justify-between text-[10px] text-text-muted mb-2">
+                                <span>{{ __('ui.night.roles_completed') }}: <span class="text-accent-green font-semibold">{{ $completedCount }}/{{ $totalNightRoles }}</span></span>
+                                <span>{{ __('ui.night.roles_pending') }}: <span class="{{ $pendingCount > 0 ? 'text-accent-red' : 'text-accent-green' }} font-semibold">{{ $pendingCount }}</span></span>
+                            </div>
+                            <div class="flex flex-wrap gap-1">
+                                @foreach($nightOrder as $rk)
+                                    @php
+                                        $isDone = in_array($rk, $completedRoleKeys);
+                                        $isWaiting = in_array($rk, $pendingRoleKeys);
+                                    @endphp
+                                    <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full transition-all duration-300
+                                        {{ $isDone ? 'bg-accent-green/10 text-accent-green' : ($isWaiting ? 'bg-accent-blue/10 text-accent-blue animate-pulse' : 'bg-bg-surface/50 text-text-muted/40') }}">
+                                        @if($isDone)
+                                            ✓
+                                        @elseif($isWaiting)
+                                            ●
+                                        @else
+                                            ○
+                                        @endif
+                                        {{ __("roles.{$rk}.name") }}
+                                    </span>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 @endif
 
-                {{-- NIGHT TIMER --}}
-                @if($state->phase === 'night')
-                    @php
-                        $pct = $nightRemaining > 0 ? round(($nightRemaining / 120) * 100) : 0;
-                        $timerColor = $nightRemaining <= 30 ? 'bg-accent-red' : ($nightRemaining <= 60 ? 'bg-accent-gold' : 'bg-accent-blue');
-                    @endphp
-                    <div class="glass-panel border border-border-default p-3">
-                        <div class="flex items-center justify-between text-xs mb-1.5">
-                            <span class="text-text-muted">{{ __('ui.night.time_remaining') }}</span>
-                            <span class="font-mono {{ $nightRemaining <= 30 ? 'text-accent-red font-bold animate-pulse' : 'text-text-secondary' }}">
-                                {{ gmdate('i:s', $nightRemaining) }}
-                            </span>
-                        </div>
-                        <div class="h-1.5 bg-bg-surface rounded-full overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-1000 ease-linear {{ $timerColor }}"
-                                 style="width: {{ $pct }}%">
+                {{-- Little Girl Caught button --}}
+                @if($state->phase === 'night' && $littleGirlAlive)
+                    <div class="glass-panel border border-accent-pink/30 p-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">🎀</span>
+                                <span class="text-xs text-accent-pink font-semibold">{{ __('ui.narrator.little_girl_caught') }}</span>
                             </div>
+                            <button wire:click="littleGirlCaught"
+                                    wire:confirm="{{ __('ui.narrator.confirm_little_girl') }}"
+                                    class="px-3 py-1.5 bg-accent-pink text-white text-xs font-semibold rounded-lg hover:bg-accent-pink/90 transition-colors">
+                                {{ __('ui.narrator.catch_little_girl') }}
+                            </button>
                         </div>
-                        <div class="flex justify-between text-[10px] text-text-muted mt-1">
-                            <span>{{ __('ui.night.completed') }}: {{ count($completedRoleKeys) }}</span>
-                            <span>{{ __('ui.night.pending') }}: {{ count($pendingRoleKeys) }}</span>
+                    </div>
+                @endif
+
+                {{-- Night step indicator --}}
+                @if($state->phase === 'night')
+                    <div class="glass-panel border border-border-default p-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs text-text-muted uppercase tracking-wider">{{ __('ui.night.night_sequence') }}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach($nightOrder as $i => $rk)
+                                @php
+                                    $isCompleted = in_array($rk, $completedRoleKeys);
+                                    $isPending = in_array($rk, $pendingRoleKeys);
+                                    $stepNum = $i + 1;
+                                @endphp
+                                <span class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full transition-all duration-300
+                                    {{ $isCompleted ? 'bg-accent-green/10 text-accent-green' : ($isPending ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-bg-surface/50 text-text-muted/40') }}">
+                                    <span class="font-mono text-[9px] opacity-60">{{ $stepNum }}.</span>
+                                    {{ __("roles.{$rk}.name") }}
+                                </span>
+                            @endforeach
                         </div>
                     </div>
                 @endif
@@ -246,38 +303,56 @@
                                 'description' => __("roles.{$p->role->key}.description"),
                             ] : null,
                         ]) }}"
-                             class="relative bg-bg-card border border-border-default rounded-xl p-3 cursor-pointer transition-all duration-200 hover:border-accent-gold/40 hover:shadow-lg group
+                             class="relative bg-bg-card border border-border-default rounded-xl p-2.5 cursor-pointer transition-all duration-200 hover:border-accent-gold/40 hover:shadow-lg group
                                     {{ !$p->is_alive ? 'opacity-50 grayscale' : 'hover:glow-gold' }}
-                                    {{ $hasPending ? 'ring-1 ring-accent-blue/50 animate-pulse' : '' }}
+                                    {{ $hasPending ? 'ring-1 ring-accent-blue/50' : '' }}
                                     {{ $isDisconnected ? 'opacity-60 ring-1 ring-accent-red/50' : '' }}
-                                    border-l-2 {{ $borderColor }}">
-                            <div class="flex items-center gap-2.5">
+                                    border-l-[3px] {{ $borderColor }}">
+                            <div class="flex items-center gap-2">
                                 <div class="relative flex-shrink-0">
-                                    <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-bg-elevated flex items-center justify-center text-sm font-bold text-text-secondary">
+                                    <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary">
                                         {{ strtoupper(substr($p->nickname, 0, 2)) }}
                                     </div>
                                     @if(!$p->is_alive)
-                                        <div class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-red rounded-full flex items-center justify-center text-[10px]">💀</div>
+                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-red rounded-full flex items-center justify-center text-[8px]">💀</div>
                                     @elseif($isDisconnected)
-                                        <div class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-red-dark rounded-full flex items-center justify-center text-[8px]">⚠</div>
+                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-red-dark rounded-full flex items-center justify-center text-[7px]">⚠</div>
                                     @elseif($isLover)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-pink rounded-full flex items-center justify-center text-[8px]">💕</div>
+                                        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-accent-pink rounded-full flex items-center justify-center text-[7px]">💕</div>
                                     @elseif($isEnchanted)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-green rounded-full flex items-center justify-center text-[8px]">✦</div>
+                                        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-accent-green rounded-full flex items-center justify-center text-[7px]">✦</div>
+                                    @endif
+                                    {{-- Pending action indicator --}}
+                                    @if($hasPending)
+                                        <div class="absolute -bottom-0.5 -left-0.5 w-3 h-3 bg-accent-blue rounded-full flex items-center justify-center text-[7px] animate-pulse">◉</div>
                                     @endif
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-text-primary text-sm font-medium truncate {{ !$p->is_alive ? 'line-through text-text-muted' : '' }}">
+                                    <p class="text-text-primary text-xs font-medium truncate {{ !$p->is_alive ? 'line-through text-text-muted' : '' }}">
                                         {{ $p->nickname }}
                                         @if($isDisconnected)
-                                            <span class="text-accent-red text-[10px] ml-1">({{ __('ui.game.disconnected') }})</span>
+                                            <span class="text-accent-red text-[9px] ml-0.5">({{ __('ui.game.disconnected') }})</span>
                                         @endif
                                     </p>
                                     @if($p->role)
                                         <div class="flex items-center gap-1 mt-0.5">
-                                            <x-role-icon :roleKey="$p->role->key" class="text-xs" />
-                                            <span class="text-text-muted text-[10px] truncate">{{ __("roles.{$p->role->key}.name") }}</span>
+                                            <x-role-icon :roleKey="$p->role->key" class="text-[10px]" />
+                                            <span class="text-text-muted text-[9px] truncate">{{ __("roles.{$p->role->key}.name") }}</span>
                                         </div>
+                                    @endif
+                                </div>
+                                {{-- Status dot --}}
+                                <div class="flex-shrink-0">
+                                    @if(!$p->is_alive)
+                                        <span class="w-1.5 h-1.5 rounded-full bg-accent-red inline-block"></span>
+                                    @elseif($hasPending)
+                                        <span class="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse inline-block"></span>
+                                    @elseif($isDisconnected)
+                                        <span class="w-1.5 h-1.5 rounded-full bg-accent-red-dark inline-block"></span>
+                                    @elseif($isLover)
+                                        <span class="w-1.5 h-1.5 rounded-full bg-accent-pink inline-block"></span>
+                                    @else
+                                        <span class="w-1.5 h-1.5 rounded-full bg-accent-green inline-block"></span>
                                     @endif
                                 </div>
                             </div>

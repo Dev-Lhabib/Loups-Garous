@@ -17,6 +17,14 @@ class NightAction extends Component
     public ?NightActionModel $submittedAction = null;
     public array $alivePlayers = [];
     public bool $isDecoy = false;
+    public ?string $currentActionType = null;
+    public bool $actionSelected = false;
+    public array $submittedActions = [];
+    public bool $wantsMoreActions = false;
+    public ?array $decoyPuzzle = null;
+
+    private array $multiActionRoles = ['witch'];
+    private array $decoyTypes = ['math', 'riddle', 'count', 'unscramble', 'sequence'];
 
     public function mount(Room $room, Player $player)
     {
@@ -43,17 +51,40 @@ class NightAction extends Component
             ->get()
             ->toArray();
 
+        $this->isDecoy = !$role || $role->night_order === null;
+
+        if ($this->isDecoy) {
+            $this->generateDecoyPuzzle();
+            return;
+        }
+
         $existing = NightActionModel::where('game_state_id', $state->id)
             ->where('player_id', $player->id)
             ->whereNull('resolved_at')
-            ->first();
+            ->get();
 
-        if ($existing) {
+        if ($existing->isNotEmpty()) {
             $this->submitted = true;
-            $this->submittedAction = $existing;
+            $this->submittedAction = $existing->first();
+            $this->submittedActions = $existing->pluck('action_type')->toArray();
+
+            $remainingTypes = array_diff($this->getActionTypesForRole($role->key), $this->submittedActions);
+            $this->wantsMoreActions = !empty($remainingTypes);
+            return;
         }
 
-        $this->isDecoy = !$role || $role->night_order === null;
+        $actionTypes = $this->getActionTypesForRole($role->key);
+
+        if (count($actionTypes) === 1) {
+            $this->currentActionType = $actionTypes[0];
+            $this->actionSelected = true;
+        }
+    }
+
+    public function selectActionType(string $actionType): void
+    {
+        $this->currentActionType = $actionType;
+        $this->actionSelected = true;
     }
 
     public function selectTarget(string $targetId)
@@ -68,20 +99,54 @@ class NightAction extends Component
         $this->confirming = false;
     }
 
-    private function getActionTypeForRole(string $roleKey): ?string
+    public function submitAnother(): void
+    {
+        $this->submitted = false;
+        $this->submittedAction = null;
+        $this->confirming = false;
+        $this->selectedTargetId = null;
+        $this->actionSelected = false;
+        $this->currentActionType = null;
+    }
+
+    private function generateDecoyPuzzle(): void
+    {
+        $locale = app()->getLocale();
+        $decoys = trans("decoys", [], $locale);
+        if (!is_array($decoys)) $decoys = trans("decoys", [], 'en');
+
+        $type = $this->decoyTypes[array_rand($this->decoyTypes)];
+        $items = $decoys[$type] ?? [];
+        if (empty($items)) {
+            $this->decoyPuzzle = ['type' => 'math', 'content' => '13 × 7 = ?'];
+            return;
+        }
+        $this->decoyPuzzle = [
+            'type' => $type,
+            'content' => $items[array_rand($items)],
+        ];
+    }
+
+    public function refreshDecoy(): void
+    {
+        $this->generateDecoyPuzzle();
+    }
+
+    private function getActionTypesForRole(string $roleKey): array
     {
         return match ($roleKey) {
-            'werewolf' => 'kill',
-            'big_bad_wolf' => 'extra_kill',
-            'accursed_wolf_father' => 'convert',
-            'white_werewolf' => 'solo_kill',
-            'bodyguard' => 'protect',
-            'seer' => 'inspect',
-            'witch' => 'save',
-            'pied_piper' => 'enchant',
-            'fox' => 'sniff',
-            'cupid' => 'link_lovers',
-            default => null,
+            'werewolf' => ['kill'],
+            'big_bad_wolf' => ['extra_kill'],
+            'accursed_wolf_father' => ['convert'],
+            'white_werewolf' => ['solo_kill'],
+            'bodyguard' => ['protect'],
+            'seer' => ['inspect'],
+            'witch' => ['save', 'poison'],
+            'pied_piper' => ['enchant'],
+            'fox' => ['sniff'],
+            'cupid' => ['link_lovers'],
+            'wolf_hound' => ['choose_side'],
+            default => [],
         };
     }
 
@@ -104,7 +169,7 @@ class NightAction extends Component
         $role = $this->player->role;
         if (!$role || $role->night_order === null) return;
 
-        $actionType = $this->getActionTypeForRole($role->key);
+        $actionType = $this->currentActionType;
         if (!$actionType) return;
 
         $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
@@ -113,9 +178,13 @@ class NightAction extends Component
         ]);
 
         if ($action) {
+            $this->submittedActions[] = $actionType;
             $this->submitted = true;
             $this->submittedAction = $action;
             $this->confirming = false;
+
+            $remainingTypes = array_diff($this->getActionTypesForRole($role->key), $this->submittedActions);
+            $this->wantsMoreActions = !empty($remainingTypes);
         }
     }
 
@@ -126,6 +195,8 @@ class NightAction extends Component
         return view('livewire.player.night-action', [
             'role' => $role,
             'isDecoy' => $this->isDecoy,
+            'actionTypes' => $role ? $this->getActionTypesForRole($role->key) : [],
+            'isMultiAction' => $role && in_array($role->key, $this->multiActionRoles),
         ]);
     }
 }

@@ -61,6 +61,12 @@ class GameEngine
     {
         $this->actionResolver->resolve($state);
 
+        $state = $state->fresh();
+
+        if (($state->data['winning_faction'] ?? null) !== null) {
+            return;
+        }
+
         $winner = $this->winChecker->check($state);
         if ($winner) {
             $this->endGame($state, $winner);

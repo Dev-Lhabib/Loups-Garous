@@ -106,6 +106,32 @@ class NarratorDashboard extends Component
         $this->refreshNightFeed();
     }
 
+    public function littleGirlCaught()
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
+            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted little girl caught'));
+            $this->redirect(route('home'));
+            return;
+        }
+
+        if ($this->state->phase !== 'night') return;
+
+        $littleGirl = Player::where('room_id', $this->room->id)
+            ->where('is_alive', true)
+            ->whereHas('role', fn ($q) => $q->where('key', 'little_girl'))
+            ->first();
+
+        if (!$littleGirl) return;
+
+        $engine = app(GameEngine::class);
+        $engine->eliminatePlayer($littleGirl, $this->state);
+
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('player_eliminated', ['nickname' => $littleGirl->nickname]);
+        $this->refreshNightFeed();
+    }
+
     public function newGame()
     {
         $requestPlayer = request()->get('_player');
@@ -117,22 +143,24 @@ class NarratorDashboard extends Component
 
         $room = $this->room;
 
-        if ($room->gameState) {
-            $stateId = $room->gameState->id;
-            NightAction::where('game_state_id', $stateId)->delete();
-            Vote::where('game_state_id', $stateId)->delete();
-            CoupleBond::where('game_state_id', $stateId)->delete();
-            GameState::where('room_id', $room->id)->delete();
-        }
+        DB::transaction(function () use ($room) {
+            if ($room->gameState) {
+                $stateId = $room->gameState->id;
+                NightAction::where('game_state_id', $stateId)->delete();
+                Vote::where('game_state_id', $stateId)->delete();
+                CoupleBond::where('game_state_id', $stateId)->delete();
+                GameState::where('room_id', $room->id)->delete();
+            }
 
-        Player::where('room_id', $room->id)->update([
-            'role_id' => null,
-            'is_alive' => true,
-            'voting_banned' => false,
-        ]);
+            Player::where('room_id', $room->id)->update([
+                'role_id' => null,
+                'is_alive' => true,
+                'voting_banned' => false,
+            ]);
 
-        $room->status = 'waiting';
-        $room->save();
+            $room->status = 'waiting';
+            $room->save();
+        });
 
         event(new GameReset($room));
 
@@ -319,6 +347,18 @@ class NarratorDashboard extends Component
             'voting' => __('ui.phase.voting'),
             'finished' => __('ui.phase.finished'),
         ];
+        $subtitles = [
+            'night' => __('ui.phase.night_subtitle'),
+            'day' => __('ui.phase.day_subtitle'),
+            'voting' => __('ui.phase.voting_subtitle'),
+            'finished' => __('ui.phase.finished_subtitle'),
+        ];
+        $icons = [
+            'night' => '🌙',
+            'day' => '☀️',
+            'voting' => '🗳️',
+            'finished' => '🏆',
+        ];
         $classes = [
             'waiting' => 'phase-overlay phase-overlay-waiting',
             'night' => 'phase-overlay phase-overlay-night',
@@ -326,7 +366,12 @@ class NarratorDashboard extends Component
             'voting' => 'phase-overlay phase-overlay-voting',
             'finished' => 'phase-overlay phase-overlay-finished',
         ];
-        $this->dispatch('transition-phase', label: $labels[$phase] ?? '', class: $classes[$phase] ?? '');
+        $this->dispatch('transition-phase',
+            label: $labels[$phase] ?? '',
+            subtitle: $subtitles[$phase] ?? '',
+            icon: $icons[$phase] ?? '',
+            class: $classes[$phase] ?? '',
+        );
     }
 
     public function onPlayerEliminated($payload)
@@ -480,6 +525,10 @@ class NarratorDashboard extends Component
         $pendingRoleKeys = array_unique(array_column($this->pendingRoles, 'role_key'));
         $completedRoleKeys = array_unique(array_column($this->nightActionFeed, 'role_key'));
 
+        $littleGirlAlive = $players->contains(function ($p) {
+            return $p->is_alive && $p->role && $p->role->key === 'little_girl';
+        });
+
         return view('livewire.narrator.narrator-dashboard', [
             'players' => $players,
             'availableTransitions' => $availableTransitions,
@@ -497,6 +546,7 @@ class NarratorDashboard extends Component
             'autoResolveTimeLeft' => $autoResolveTimeLeft,
             'pendingRoleKeys' => $pendingRoleKeys,
             'completedRoleKeys' => $completedRoleKeys,
+            'littleGirlAlive' => $littleGirlAlive,
         ])->layout('layouts.app');
     }
 

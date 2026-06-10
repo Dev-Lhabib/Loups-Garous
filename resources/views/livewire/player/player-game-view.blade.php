@@ -2,6 +2,8 @@
      x-data="{
          showOverlay: false,
          phaseLabel: '',
+         phaseSubtitle: '',
+         phaseIcon: '',
          phaseClass: '',
          resultNotif: null,
          resultTimer: null,
@@ -12,8 +14,10 @@
      @transition-phase.window="
          showOverlay = true;
          phaseLabel = $event.detail.label;
+         phaseSubtitle = $event.detail.subtitle || '';
+         phaseIcon = $event.detail.icon || '';
          phaseClass = $event.detail.class;
-         setTimeout(() => { showOverlay = false; }, 1500);
+         setTimeout(() => { showOverlay = false; }, 2000);
      "
      @show-result.window="
          resultNotif = $event.detail;
@@ -26,7 +30,7 @@
          nightTimer = setTimeout(() => { nightEliminated = null; }, 10000);
      "
 >
-    {{-- Phase transition overlay --}}
+    {{-- Phase transition overlay - cinematic banner --}}
     <div x-show="showOverlay"
          class="fixed inset-0 z-50 flex items-center justify-center"
          :class="phaseClass"
@@ -37,8 +41,10 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          x-cloak>
-        <div class="text-center">
-            <h2 class="text-4xl md:text-5xl font-serif font-bold text-text-primary animate-fadeInScale" x-text="phaseLabel"></h2>
+        <div class="text-center space-y-4">
+            <div class="text-6xl md:text-7xl animate-floatSlow" x-text="phaseIcon"></div>
+            <h2 class="text-4xl md:text-6xl font-serif font-bold text-text-primary animate-fadeInScale" x-text="phaseLabel"></h2>
+            <p x-show="phaseSubtitle" class="text-lg md:text-xl text-text-secondary animate-slideUpReveal" style="animation-delay: 300ms;" x-text="phaseSubtitle"></p>
             <div class="flex justify-center gap-2 mt-4">
                 <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-200"></span>
                 <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-400"></span>
@@ -47,14 +53,23 @@
         </div>
     </div>
 
+    {{-- Night resolving overlay --}}
+    <div x-show="showOverlay && phaseLabel === '{{ __("ui.phase.day") }}'"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+         style="animation-delay: 800ms;"
+         x-transition:enter="transition-all duration-500"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-cloak>
+        <div class="text-center space-y-3">
+            <div class="text-4xl animate-spin-slow">🌙</div>
+            <p class="text-text-secondary text-lg font-medium">{{ __('ui.game.resolving_night') }}</p>
+        </div>
+    </div>
+
     {{-- Result notification --}}
     <div x-show="resultNotif" x-cloak
-         class="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass-panel border-2 rounded-xl px-6 py-4 shadow-2xl max-w-md w-full text-center animate-slideInDown"
-         :class="{
-             'border-accent-gold/60': resultNotif?.type === 'seer' || resultNotif?.type === 'fox',
-             'border-accent-red/60': resultNotif?.type === 'night_resolved' || resultNotif?.type === 'lover_died',
-             'border-accent-gold/60': resultNotif?.type === 'village_idiot',
-         }"
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass-panel border-2 border-accent-gold/60 rounded-xl px-6 py-4 shadow-2xl max-w-md w-full text-center animate-slideInDown"
          x-transition:leave="transition-all duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
@@ -83,9 +98,9 @@
         {{-- Lover died --}}
         <template x-if="resultNotif?.type === 'lover_died'">
             <div>
-                <p class="text-accent-red text-lg font-bold">{{ __('ui.result.lover_died_title') }}</p>
+                <p class="text-text-muted text-lg font-bold">{{ __('ui.result.lover_died_title') }}</p>
                 <p class="text-text-primary mt-1">
-                    <span class="text-accent-pink font-semibold" x-text="resultNotif.partner_nickname"></span>
+                    <span class="text-accent-gold font-semibold" x-text="resultNotif.partner_nickname"></span>
                     {{ __('ui.result.lover_died_text') }}
                 </p>
             </div>
@@ -94,7 +109,7 @@
         {{-- Village Idiot revealed --}}
         <template x-if="resultNotif?.type === 'village_idiot'">
             <div>
-                <p class="text-accent-gold text-lg font-bold">{{ __('ui.result.idiot_revealed') }}</p>
+                <p class="text-text-muted text-lg font-bold">{{ __('ui.result.idiot_revealed') }}</p>
                 <p class="text-text-primary mt-1" x-text="resultNotif.nickname"></p>
             </div>
         </template>
@@ -102,7 +117,7 @@
 
     {{-- Night resolved notification --}}
     <div x-show="nightEliminated" x-cloak
-         class="fixed top-24 left-1/2 -translate-x-1/2 z-40 glass-panel border-2 border-accent-red/60 rounded-xl px-6 py-4 shadow-2xl max-w-md w-full text-center animate-slideInDown"
+         class="fixed top-24 left-1/2 -translate-x-1/2 z-40 glass-panel border-2 border-accent-gold/60 rounded-xl px-6 py-4 shadow-2xl max-w-md w-full text-center animate-slideInDown"
          x-transition:leave="transition-all duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0">
@@ -110,7 +125,7 @@
         <p class="text-text-primary text-lg font-bold">{{ __('ui.result.night_eliminations') }}</p>
         <div class="mt-2 space-y-1">
             <template x-for="name in (nightEliminated?.eliminated || [])" :key="name">
-                <p class="text-accent-red font-semibold text-lg animate-fadeInUp" x-text="name"></p>
+                <p class="text-text-primary font-semibold text-lg animate-fadeInUp" x-text="name"></p>
             </template>
         </div>
         <p x-show="nightEliminated && nightEliminated.eliminated.length === 0" class="text-text-muted italic mt-2">
@@ -127,6 +142,7 @@
             :aliveCount="$state->phase !== 'finished' && $state->phase !== 'waiting' ? ($player->is_alive ? 1 : 0) : 0"
             :totalCount="0"
             :roomCode="$room->code"
+            playerView="true"
         />
 
         @if($state->phase === 'waiting')
@@ -156,63 +172,12 @@
             </div>
 
         @elseif($state->phase === 'finished')
-            {{-- Game Over with faction-themed victory screen --}}
-            @php
-                $winningFaction = $state->data['winning_faction'] ?? 'no_one';
-                $factionConfig = [
-                    'village' => ['icon' => '🏘️', 'color' => 'text-accent-blue', 'border' => 'border-accent-blue/40', 'glow' => 'glow-blue', 'gradient' => 'from-accent-blue/20'],
-                    'werewolves' => ['icon' => '🐺', 'color' => 'text-accent-red', 'border' => 'border-accent-red/40', 'glow' => 'glow-red', 'gradient' => 'from-accent-red/20'],
-                    'white_werewolf' => ['icon' => '🌕', 'color' => 'text-accent-purple', 'border' => 'border-accent-purple/40', 'glow' => '', 'gradient' => 'from-accent-purple/20'],
-                    'pied_piper' => ['icon' => '🎵', 'color' => 'text-accent-green', 'border' => 'border-accent-green/40', 'glow' => 'glow-green', 'gradient' => 'from-accent-green/20'],
-                    'angel' => ['icon' => '😇', 'color' => 'text-accent-gold', 'border' => 'border-accent-gold/40', 'glow' => 'glow-gold', 'gradient' => 'from-accent-gold/20'],
-                    'lovers' => ['icon' => '💕', 'color' => 'text-accent-pink', 'border' => 'border-accent-pink/40', 'glow' => '', 'gradient' => 'from-accent-pink/20'],
-                    'no_one' => ['icon' => '💀', 'color' => 'text-text-muted', 'border' => 'border-border-default', 'glow' => '', 'gradient' => 'from-bg-surface'],
-                ];
-                $fc = $factionConfig[$winningFaction] ?? $factionConfig['no_one'];
-                $factionColors = [
-                    'village' => 'border-l-accent-blue', 'werewolves' => 'border-l-accent-red',
-                    'white_werewolf' => 'border-l-accent-purple', 'pied_piper' => 'border-l-accent-green',
-                    'angel' => 'border-l-accent-gold', 'lovers' => 'border-l-accent-pink',
-                ];
-            @endphp
-            <div wire:poll.3s="checkGameState" class="w-full max-w-lg text-center space-y-4">
-                <div class="glass-panel border-2 {{ $fc['border'] }} overflow-hidden {{ $fc['glow'] }} animate-fadeInScale">
-                    <div class="bg-gradient-to-b {{ $fc['gradient'] }} to-transparent p-8">
-                        <div class="text-6xl mb-4 animate-heartbeat">{{ $fc['icon'] }}</div>
-                        <h2 class="text-3xl font-serif font-bold {{ $fc['color'] }}">{{ __('ui.game.over') }}</h2>
-                        <p class="text-xl mt-2 {{ $fc['color'] }} font-semibold">{{ __("ui.win.{$winningFaction}") }}</p>
-                    </div>
-
-                    {{-- Role reveal --}}
-                    <div class="p-5">
-                        <h3 class="text-sm font-semibold text-text-primary mb-4">{{ __('ui.game.role_reveal') }}</h3>
-                        <div class="space-y-2">
-                            @foreach($players as $p)
-                                @php
-                                    $pc = $factionColors[$p->role?->faction ?? ''] ?? 'border-l-border-default';
-                                @endphp
-                                <div class="flex items-center justify-between px-3 py-2.5 bg-bg-surface/50 rounded-lg border-l-2 {{ $pc }}
-                                            {{ $p->is_alive ? '' : 'opacity-50' }} animate-fadeInUp"
-                                     style="animation-delay: {{ $loop->index * 50 }}ms;">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary">
-                                            {{ strtoupper(substr($p->nickname, 0, 1)) }}
-                                        </div>
-                                        <span class="text-sm text-text-primary {{ !$p->is_alive ? 'line-through text-text-muted' : '' }}">
-                                            {{ $p->nickname }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <x-role-icon :roleKey="$p->role?->key ?? ''" class="text-xs" />
-                                        <span class="text-xs text-text-muted">{{ $p->role ? __("roles.{$p->role->key}.name") : '?' }}</span>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-text-muted text-xs italic animate-fadeInUp">{{ __('ui.narrator.waiting_for_new_game') }}</p>
+            <div wire:poll.3s="checkGameState">
+                <x-end-game-screen
+                    :winningFaction="$state->data['winning_faction'] ?? 'no_one'"
+                    :players="$players"
+                    :currentPlayerId="$player->id"
+                />
             </div>
 
         @else
@@ -222,12 +187,12 @@
             @php $lastNightDeaths = $state->data['last_night_deaths'] ?? []; @endphp
 
             @if(!empty($lastNightDeaths) && in_array($state->phase, ['day', 'voting']))
-                <div class="w-full max-w-md animate-fadeInUp">
-                    <div class="glass-panel border border-accent-red/40 p-4 text-center">
+                <div class="w-full max-w-md animate-slideUpReveal">
+                    <div class="glass-panel border border-border-default p-4 text-center">
                         <p class="text-text-muted text-xs uppercase tracking-widest mb-2">{{ __('ui.game.last_night') }}</p>
                         <div class="space-y-1">
                             @foreach($lastNightDeaths as $name)
-                                <p class="text-accent-red text-sm font-semibold animate-slideInDown" style="animation-delay: {{ $loop->index * 100 }}ms;">{{ $name }}</p>
+                                <p class="text-text-muted text-sm font-semibold animate-slideInDown" style="animation-delay: {{ $loop->index * 100 }}ms;">{{ $name }}</p>
                             @endforeach
                         </div>
                     </div>
@@ -251,9 +216,9 @@
                          class="glass-panel border border-border-default p-6 text-center cursor-pointer hover:border-accent-gold/40 transition-all duration-200">
                         <p class="text-text-muted">{{ __('ui.game.discussion_time') }}</p>
                     </div>
-                    <div x-show="revealed" x-cloak
-                         class="glass-panel border border-accent-gold/60 p-4">
-                        <p class="text-accent-gold text-xs uppercase tracking-widest mb-3">{{ __('ui.result.your_results') }}</p>
+                <div x-show="revealed" x-cloak
+                     class="glass-panel border border-accent-gold/60 p-4">
+                    <p class="text-text-muted text-xs uppercase tracking-widest mb-3">{{ __('ui.result.your_results') }}</p>
                         @if($mySeerResult)
                             <div class="flex justify-between items-start mb-2 p-2 bg-bg-surface/50 rounded">
                                 <div>
@@ -279,21 +244,22 @@
                 </div>
             @endif
 
-            <div class="w-full max-w-md">
+            <div class="w-full max-w-md space-y-3">
                 @if(!$player->is_alive)
-                    <div class="glass-panel border border-accent-red/50 p-6 text-center animate-fadeInUp">
-                        <div class="text-4xl mb-3">💀</div>
-                        <p class="text-accent-red font-semibold text-lg">{{ __('ui.game.you_are_dead') }}</p>
+                    <div class="glass-panel border border-border-default p-6 text-center animate-slideUpReveal">
+                        <div class="text-5xl mb-3 animate-floatSlow">💀</div>
+                        <p class="text-text-muted font-semibold text-lg">{{ __('ui.game.you_are_dead') }}</p>
+                        <p class="text-text-muted/60 text-xs mt-2">{{ __('ui.game.you_are_dead_subtitle') }}</p>
                     </div>
                 @elseif($state->phase === 'night' && !$player->is_narrator)
                     <livewire:player.night-action :room="$room" :player="$player" :wire:key="'night-action-'.$player->id" />
                 @elseif($state->phase === 'voting' && !$player->is_narrator)
                     <livewire:player.voting-panel :room="$room" :player="$player" :wire:key="'voting-'.$player->id" />
                 @elseif($state->phase === 'day' && !$mySeerResult && !$myFoxResult)
-                    <div class="glass-panel border border-border-default p-8 text-center animate-fadeInUp">
-                        <div class="text-5xl mb-4 animate-heartbeat">☀️</div>
+                    <div class="glass-panel border border-border-default p-8 text-center animate-slideUpReveal">
+                        <div class="text-5xl mb-4 animate-floatSlow">☀️</div>
                         <p class="text-text-primary font-medium text-lg">{{ __('ui.game.discussion_time') }}</p>
-                        <p class="text-text-muted text-sm mt-2">{{ __('ui.game.look_around') }}</p>
+                        <p class="text-text-muted text-sm mt-2">{{ __('ui.game.discussion_subtitle') }}</p>
                     </div>
                 @endif
             </div>

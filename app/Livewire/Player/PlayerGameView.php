@@ -143,6 +143,18 @@ class PlayerGameView extends Component
             'voting' => __('ui.phase.voting'),
             'finished' => __('ui.phase.finished'),
         ];
+        $subtitles = [
+            'night' => __('ui.phase.night_subtitle'),
+            'day' => __('ui.phase.day_subtitle'),
+            'voting' => __('ui.phase.voting_subtitle'),
+            'finished' => __('ui.phase.finished_subtitle'),
+        ];
+        $icons = [
+            'night' => '🌙',
+            'day' => '☀️',
+            'voting' => '🗳️',
+            'finished' => '🏆',
+        ];
         $classes = [
             'waiting' => 'phase-overlay phase-overlay-waiting',
             'night' => 'phase-overlay phase-overlay-night',
@@ -150,7 +162,12 @@ class PlayerGameView extends Component
             'voting' => 'phase-overlay phase-overlay-voting',
             'finished' => 'phase-overlay phase-overlay-finished',
         ];
-        $this->dispatch('transition-phase', label: $labels[$phase] ?? '', class: $classes[$phase] ?? '');
+        $this->dispatch('transition-phase',
+            label: $labels[$phase] ?? '',
+            subtitle: $subtitles[$phase] ?? '',
+            icon: $icons[$phase] ?? '',
+            class: $classes[$phase] ?? '',
+        );
     }
 
     public function dismissResult(string $type): void

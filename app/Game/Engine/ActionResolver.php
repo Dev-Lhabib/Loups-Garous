@@ -181,6 +181,10 @@ class ActionResolver
             $eliminatedNicknames = [];
             $this->applyDeaths($state, array_unique($deaths), $eliminatedNicknames);
 
+            if (($state->data['winning_faction'] ?? null) !== null) {
+                return;
+            }
+
             $eliminatedNicknames = array_filter(array_unique($eliminatedNicknames));
 
             $data = $state->data ?? [];

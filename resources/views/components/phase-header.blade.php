@@ -5,6 +5,7 @@
     'totalCount' => 0,
     'roomCode' => '',
     'narratorView' => false,
+    'playerView' => false,
 ])
 
 @php
@@ -67,14 +68,32 @@ $phaseConfig = [
 ];
 
 $cfg = $phaseConfig[$phase] ?? $phaseConfig['waiting'];
+
+// Player view: use gold for ALL phases to prevent role/phase info leakage via color
+if ($playerView) {
+    $cfg = [
+        'icon' => $cfg['icon'],
+        'label' => $cfg['label'],
+        'subtitle' => $cfg['subtitle'],
+        'gradient' => 'from-accent-gold/10 via-bg-surface to-bg-primary',
+        'border' => 'border-accent-gold/30',
+        'accent' => 'text-accent-gold',
+        'bgAccent' => 'bg-accent-gold/10',
+        'glow' => 'glow-gold',
+        'bar' => 'bg-accent-gold',
+    ];
+}
 $pct = $totalCount > 0 ? round(($aliveCount / $totalCount) * 100) : 0;
 @endphp
 
 <div class="glass-panel border {{ $cfg['border'] }} overflow-hidden transition-all duration-300 {{ $cfg['glow'] }} {{ $narratorView ? '' : 'w-full max-w-2xl mx-auto' }}">
-    <div class="bg-gradient-to-r {{ $cfg['gradient'] }} p-4 md:p-5">
+    <div class="bg-gradient-to-r {{ $cfg['gradient'] }} p-4 md:p-5 relative">
+        {{-- Ambient accent bar at top --}}
+        <div class="absolute top-0 left-0 right-0 h-0.5 {{ $cfg['bar'] }} opacity-60"></div>
+
         <div class="flex items-start justify-between gap-4">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="text-3xl md:text-4xl flex-shrink-0 animate-heartbeat">{{ $cfg['icon'] }}</div>
+                <div class="text-3xl md:text-4xl flex-shrink-0 animate-floatSlow">{{ $cfg['icon'] }}</div>
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="font-serif text-xl md:text-2xl font-bold text-text-primary truncate">
@@ -82,7 +101,7 @@ $pct = $totalCount > 0 ? round(($aliveCount / $totalCount) * 100) : 0;
                         </h1>
                         @if($round > 0)
                             <span class="text-xs font-mono {{ $cfg['accent'] }} {{ $cfg['bgAccent'] }} px-2 py-0.5 rounded-full ring-1 ring-inset {{ $cfg['border'] }}">
-                                R{{ $round }}
+                                {{ __('ui.game.round_short') }} {{ $round }}
                             </span>
                         @endif
                     </div>

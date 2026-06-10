@@ -11,6 +11,13 @@ class JoinRoom extends Component
     public string $code = '';
     public string $nickname = '';
 
+    public function mount()
+    {
+        if ($code = request()->query('code')) {
+            $this->code = strtoupper(substr($code, 0, 6));
+        }
+    }
+
     public function submit(LobbyService $lobbyService)
     {
         $this->validate([
