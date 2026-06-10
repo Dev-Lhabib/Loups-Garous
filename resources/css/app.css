@@ -42,6 +42,13 @@
 
     html {
         scroll-behavior: smooth;
+        --tx-hover: 0.125rem;
+        --slide-in-x: 20px;
+    }
+
+    [dir="rtl"] {
+        --tx-hover: -0.125rem;
+        --slide-in-x: -20px;
     }
 
     body {
@@ -244,7 +251,7 @@
 }
 
 @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(20px); }
+    from { opacity: 0; transform: translateX(var(--slide-in-x, 20px)); }
     to { opacity: 1; transform: translateX(0); }
 }
 
@@ -341,8 +348,7 @@
 
 @media (max-width: 640px) {
     .mobile-full {
-        margin-left: -1rem;
-        margin-right: -1rem;
+        margin-inline: -1rem;
         border-radius: 0;
     }
 }

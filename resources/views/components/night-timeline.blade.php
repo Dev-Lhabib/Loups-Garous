@@ -23,7 +23,7 @@ $actionIcons = [
     <h3 class="text-accent-blue text-sm font-semibold mb-3 flex items-center gap-2">
         <span>🌙</span>
         <span>{{ __('ui.narrator.action_feed') }}</span>
-        <span class="text-xs text-text-muted bg-accent-blue/10 px-1.5 py-0.5 rounded ml-auto font-mono">{{ count($actions) }}</span>
+        <span class="text-xs text-text-muted bg-accent-blue/10 px-1.5 py-0.5 rounded ms-auto font-mono">{{ count($actions) }}</span>
     </h3>
     <div class="space-y-0 max-h-80 overflow-y-auto scrollbar-thin">
         @forelse($actions as $action)
@@ -32,10 +32,10 @@ $actionIcons = [
                 $ts = isset($action['timestamp']) ? \Carbon\Carbon::parse($action['timestamp'])->isoFormat('HH:mm') : '';
                 $roleName = isset($action['role_key']) ? __("roles.{$action['role_key']}.name") : '';
             @endphp
-            <div class="relative pl-7 pb-3 group hover:bg-bg-elevated/30 rounded-sm transition-colors">
-                <div class="absolute left-2.5 top-1 w-1.5 h-1.5 rounded-full bg-accent-blue/50 ring-2 ring-bg-card"></div>
+            <div class="relative ps-7 pb-3 group hover:bg-bg-elevated/30 rounded-sm transition-colors">
+                <div class="absolute start-2.5 top-1 w-1.5 h-1.5 rounded-full bg-accent-blue/50 ring-2 ring-bg-card"></div>
                 @if(!$loop->last)
-                    <div class="absolute left-3 top-3 bottom-0 w-px bg-border-default"></div>
+                    <div class="absolute start-3 top-3 bottom-0 w-px bg-border-default"></div>
                 @endif
                 <div class="flex items-start gap-2">
                     <span class="text-xs flex-shrink-0 mt-0.5">{{ $icon }}</span>

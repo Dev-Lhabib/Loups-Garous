@@ -20,7 +20,7 @@ $eventColors = [
     <h3 class="text-text-primary text-sm font-semibold mb-3 flex items-center gap-2">
         <span>📜</span>
         <span>{{ __('ui.narrator.game_log') }}</span>
-        <span class="text-xs text-text-muted ml-auto font-mono">{{ count($entries) }}</span>
+        <span class="text-xs text-text-muted ms-auto font-mono">{{ count($entries) }}</span>
     </h3>
     <div class="space-y-0 max-h-80 overflow-y-auto scrollbar-thin">
         @forelse($entries as $entry)
@@ -29,10 +29,10 @@ $eventColors = [
                 $colors = $eventColors[$type] ?? ['dot' => 'bg-text-muted', 'border' => 'border-border-default', 'text' => 'text-text-secondary'];
                 $ts = isset($entry['timestamp']) ? \Carbon\Carbon::parse($entry['timestamp'])->isoFormat('HH:mm') : '';
             @endphp
-            <div class="relative pl-7 pb-2.5 group hover:bg-bg-elevated/30 rounded-sm transition-colors">
-                <div class="absolute left-2.5 top-1.5 w-2 h-2 rounded-full {{ $colors['dot'] }} ring-2 ring-bg-card"></div>
+            <div class="relative ps-7 pb-2.5 group hover:bg-bg-elevated/30 rounded-sm transition-colors">
+                <div class="absolute start-2.5 top-1.5 w-2 h-2 rounded-full {{ $colors['dot'] }} ring-2 ring-bg-card"></div>
                 @if(!$loop->last)
-                    <div class="absolute left-3 top-4 bottom-0 w-px bg-border-default"></div>
+                    <div class="absolute start-3 top-4 bottom-0 w-px bg-border-default"></div>
                 @endif
                 <div class="flex items-start gap-2">
                     <span class="text-[10px] text-text-muted flex-shrink-0 mt-0.5 font-mono">{{ $ts }}</span>

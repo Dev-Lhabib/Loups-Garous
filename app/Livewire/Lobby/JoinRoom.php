@@ -11,9 +11,9 @@ class JoinRoom extends Component
     public string $code = '';
     public string $nickname = '';
 
-    public function mount()
+    public function mount($code = null)
     {
-        if ($code = request()->query('code')) {
+        if ($code = $code ?: request()->query('code')) {
             $this->code = strtoupper(substr($code, 0, 6));
         }
     }
@@ -34,6 +34,7 @@ class JoinRoom extends Component
 
     public function render()
     {
-        return view('livewire.lobby.join-room');
+        return view('livewire.lobby.join-room')
+            ->layout('layouts.app');
     }
 }

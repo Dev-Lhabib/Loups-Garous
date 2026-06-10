@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'welcome')->name('home');
 
 Route::get('/locale/{locale}', function (string $locale) {
-    if (in_array($locale, ['en', 'fr'])) {
+    if (in_array($locale, ['en', 'fr', 'ar'])) {
         session(['locale' => $locale]);
         app()->setLocale($locale);
     }

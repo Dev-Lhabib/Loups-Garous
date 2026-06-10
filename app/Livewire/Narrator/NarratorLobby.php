@@ -246,6 +246,6 @@ class NarratorLobby extends Component
             'effectiveCount' => $effectiveCount,
             'totalAssigned' => $totalAssigned,
             'remaining' => $remaining,
-        ]);
+        ])->layout('layouts.app');
     }
 }

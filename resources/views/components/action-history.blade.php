@@ -49,7 +49,7 @@ $actionLangMap = [
                                 <span>{{ $icon }}</span>
                                 <span class="text-text-secondary truncate">{{ $playerName }}</span>
                                 <span class="text-text-muted">({{ $roleName }})</span>
-                                <span class="text-text-primary ml-auto truncate">
+                                 <span class="text-text-primary ms-auto truncate">
                                     @if($langKey === 'action_generic')
                                         {{ __('ui.narrator.action_generic', ['type' => $action['action_type'], 'name' => $targetName]) }}
                                     @else

@@ -176,7 +176,7 @@
 
             {{-- Guide Panel --}}
             <div x-data="{ open: false }" class="glass-panel border border-border-default p-3 md:p-4">
-                <button @click="open = !open" class="w-full flex items-center justify-between gap-2 text-left">
+                <button @click="open = !open" class="w-full flex items-center justify-between gap-2 text-start">
                     <h3 class="text-xs md:text-sm font-semibold text-text-primary flex items-center gap-2">
                         <span>📖</span>
                         <span>{{ __('ui.lobby.setup_guide') }}</span>

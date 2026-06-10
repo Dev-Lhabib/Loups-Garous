@@ -11,7 +11,7 @@
         </div>
 
         <form wire:submit="submit" class="space-y-3 md:space-y-4">
-            <div class="text-left">
+            <div class="text-start">
                 <label for="code" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.room_code') }}</label>
                 <input type="text"
                        id="code"
@@ -22,7 +22,7 @@
                 @error('code') <p class="text-accent-red text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
-            <div class="text-left">
+            <div class="text-start">
                 <label for="nickname" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.your_nickname') }}</label>
                 <input type="text"
                        id="nickname"

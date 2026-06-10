@@ -40,7 +40,7 @@ explicitly out of scope:
 | Real-time | Laravel Reverb (WebSockets) |
 | Tunnel | Ngrok |
 | Languages | FR / EN via Laravel `lang/` files |
-| Database | SQLite (MVP — local only) |
+| Database | MySQL (MVP — local only) |
 
 **Never** introduce new dependencies without explicit approval. Do not add:
 - Redis (not needed for MVP — DB only)
@@ -1132,7 +1132,7 @@ NightAction::create([
 - Mask/unmask system (hold to reveal)
 - Night decoy system (math, riddle, atmospheric puzzles for non-acting players)
 - Bilingual FR/EN
-- Ngrok + SQLite local setup
+- Ngrok + MySQL local setup
 
 ### OUT OF SCOPE — do not build, do not suggest
 - App Narrator Mode

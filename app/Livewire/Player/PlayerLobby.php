@@ -59,6 +59,7 @@ class PlayerLobby extends Component
 
     public function render()
     {
-        return view('livewire.player.player-lobby');
+        return view('livewire.player.player-lobby')
+            ->layout('layouts.app');
     }
 }

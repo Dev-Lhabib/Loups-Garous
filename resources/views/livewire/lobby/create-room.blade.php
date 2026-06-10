@@ -11,7 +11,7 @@
         </div>
 
         <form wire:submit="submit" class="space-y-3 md:space-y-4">
-            <div class="text-left">
+            <div class="text-start">
                 <label for="nickname" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.your_nickname') }}</label>
                 <input type="text"
                        id="nickname"

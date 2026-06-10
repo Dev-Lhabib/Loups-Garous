@@ -284,13 +284,13 @@
                             $isDisconnected = collect($disconnectedPlayers)->firstWhere('id', $p->id);
                             $hasPending = collect($pendingRoles)->firstWhere('player_id', $p->id);
                             $factionColors = [
-                                'village' => 'border-l-accent-blue',
-                                'werewolves' => 'border-l-accent-red',
-                                'white_werewolf' => 'border-l-accent-purple',
-                                'pied_piper' => 'border-l-accent-green',
-                                'angel' => 'border-l-accent-gold',
+                                'village' => 'border-s-accent-blue',
+                                'werewolves' => 'border-s-accent-red',
+                                'white_werewolf' => 'border-s-accent-purple',
+                                'pied_piper' => 'border-s-accent-green',
+                                'angel' => 'border-s-accent-gold',
                             ];
-                            $borderColor = $factionColors[$p->role?->faction ?? 'village'] ?? 'border-l-border-default';
+                            $borderColor = $factionColors[$p->role?->faction ?? 'village'] ?? 'border-s-border-default';
                         @endphp
                         <div @click="showRoleModal = true; modalPlayer = {{ json_encode([
                             'id' => $p->id,
@@ -307,31 +307,31 @@
                                     {{ !$p->is_alive ? 'opacity-50 grayscale' : 'hover:glow-gold' }}
                                     {{ $hasPending ? 'ring-1 ring-accent-blue/50' : '' }}
                                     {{ $isDisconnected ? 'opacity-60 ring-1 ring-accent-red/50' : '' }}
-                                    border-l-[3px] {{ $borderColor }}">
+                                    border-s-[3px] {{ $borderColor }}">
                             <div class="flex items-center gap-2">
                                 <div class="relative flex-shrink-0">
                                     <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary">
                                         {{ strtoupper(substr($p->nickname, 0, 2)) }}
                                     </div>
                                     @if(!$p->is_alive)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-red rounded-full flex items-center justify-center text-[8px]">💀</div>
+                                        <div class="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 bg-accent-red rounded-full flex items-center justify-center text-[8px]">💀</div>
                                     @elseif($isDisconnected)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-red-dark rounded-full flex items-center justify-center text-[7px]">⚠</div>
+                                        <div class="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 bg-accent-red-dark rounded-full flex items-center justify-center text-[7px]">⚠</div>
                                     @elseif($isLover)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-accent-pink rounded-full flex items-center justify-center text-[7px]">💕</div>
+                                        <div class="absolute -top-0.5 -end-0.5 w-3 h-3 bg-accent-pink rounded-full flex items-center justify-center text-[7px]">💕</div>
                                     @elseif($isEnchanted)
-                                        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-accent-green rounded-full flex items-center justify-center text-[7px]">✦</div>
+                                        <div class="absolute -top-0.5 -end-0.5 w-3 h-3 bg-accent-green rounded-full flex items-center justify-center text-[7px]">✦</div>
                                     @endif
                                     {{-- Pending action indicator --}}
                                     @if($hasPending)
-                                        <div class="absolute -bottom-0.5 -left-0.5 w-3 h-3 bg-accent-blue rounded-full flex items-center justify-center text-[7px] animate-pulse">◉</div>
+                                        <div class="absolute -bottom-0.5 -start-0.5 w-3 h-3 bg-accent-blue rounded-full flex items-center justify-center text-[7px] animate-pulse">◉</div>
                                     @endif
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-text-primary text-xs font-medium truncate {{ !$p->is_alive ? 'line-through text-text-muted' : '' }}">
                                         {{ $p->nickname }}
                                         @if($isDisconnected)
-                                            <span class="text-accent-red text-[9px] ml-0.5">({{ __('ui.game.disconnected') }})</span>
+                                            <span class="text-accent-red text-[9px] ms-0.5">({{ __('ui.game.disconnected') }})</span>
                                         @endif
                                     </p>
                                     @if($p->role)

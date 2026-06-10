@@ -71,12 +71,12 @@ $alivePlayers = $players->filter(fn($p) => $p->is_alive);
 $deadPlayers = $players->filter(fn($p) => !$p->is_alive);
 
 $factionColors = [
-    'village' => 'border-l-accent-blue',
-    'werewolves' => 'border-l-accent-red',
-    'white_werewolf' => 'border-l-accent-purple',
-    'pied_piper' => 'border-l-accent-green',
-    'angel' => 'border-l-accent-gold',
-    'lovers' => 'border-l-accent-pink',
+    'village' => 'border-s-accent-blue',
+    'werewolves' => 'border-s-accent-red',
+    'white_werewolf' => 'border-s-accent-purple',
+    'pied_piper' => 'border-s-accent-green',
+    'angel' => 'border-s-accent-gold',
+    'lovers' => 'border-s-accent-pink',
 ];
 @endphp
 
@@ -142,7 +142,7 @@ $factionColors = [
                         <div class="space-y-1.5">
                             @foreach($alivePlayers as $p)
                                 @php $alc = $factionColors[$p->role?->faction ?? ''] ?? 'border-l-border-default'; @endphp
-                                <div class="flex items-center justify-between px-3 py-2 bg-accent-green/5 rounded-lg border border-accent-green/20 border-l-2 {{ $alc }} animate-slideUpReveal"
+                                <div class="flex items-center justify-between px-3 py-2 bg-accent-green/5 rounded-lg border border-accent-green/20 border-s-2 {{ $alc }} animate-slideUpReveal"
                                      style="animation-delay: {{ 350 + $loop->index * 60 }}ms;">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-8 h-8 rounded-full bg-accent-green/20 flex items-center justify-center text-sm font-bold text-accent-green">
@@ -169,7 +169,7 @@ $factionColors = [
                         <div class="space-y-1.5">
                             @foreach($deadPlayers as $p)
                                 @php $dlc = $factionColors[$p->role?->faction ?? ''] ?? 'border-l-border-default'; @endphp
-                                <div class="flex items-center justify-between px-3 py-2 bg-accent-red/5 rounded-lg border border-accent-red/20 border-l-2 {{ $dlc }} opacity-70 animate-slideUpReveal"
+                                <div class="flex items-center justify-between px-3 py-2 bg-accent-red/5 rounded-lg border border-accent-red/20 border-s-2 {{ $dlc }} opacity-70 animate-slideUpReveal"
                                      style="animation-delay: {{ 500 + $loop->index * 60 }}ms;">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-8 h-8 rounded-full bg-accent-red/20 flex items-center justify-center text-sm font-bold text-accent-red">

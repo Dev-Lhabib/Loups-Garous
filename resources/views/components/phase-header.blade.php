@@ -87,9 +87,9 @@ $pct = $totalCount > 0 ? round(($aliveCount / $totalCount) * 100) : 0;
 @endphp
 
 <div class="glass-panel border {{ $cfg['border'] }} overflow-hidden transition-all duration-300 {{ $cfg['glow'] }} {{ $narratorView ? '' : 'w-full max-w-2xl mx-auto' }}">
-    <div class="bg-gradient-to-r {{ $cfg['gradient'] }} p-4 md:p-5 relative">
+    <div class="bg-gradient-to-{{ app()->getLocale() === 'ar' ? 'l' : 'r' }} {{ $cfg['gradient'] }} p-4 md:p-5 relative">
         {{-- Ambient accent bar at top --}}
-        <div class="absolute top-0 left-0 right-0 h-0.5 {{ $cfg['bar'] }} opacity-60"></div>
+        <div class="absolute top-0 inset-x-0 h-0.5 {{ $cfg['bar'] }} opacity-60"></div>
 
         <div class="flex items-start justify-between gap-4">
             <div class="flex items-center gap-3 min-w-0">
@@ -113,7 +113,7 @@ $pct = $totalCount > 0 ? round(($aliveCount / $totalCount) * 100) : 0;
 
             <div class="flex items-center gap-4 flex-shrink-0">
                 @if($aliveCount > 0)
-                    <div class="text-right">
+                    <div class="text-end">
                         <p class="text-xs text-text-muted uppercase tracking-wider hidden sm:block">{{ __('ui.game.players_alive') }}</p>
                         <p class="text-lg font-bold font-mono {{ $cfg['accent'] }}">
                             {{ $aliveCount }}<span class="text-text-muted text-sm">/{{ $totalCount }}</span>

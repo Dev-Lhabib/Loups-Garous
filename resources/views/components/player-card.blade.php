@@ -27,11 +27,11 @@ $sizeClass = $size === 'small' ? 'p-2.5' : 'p-3';
                 {{ $initials }}
             </div>
             @if($isDead)
-                <div class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent-red rounded-full flex items-center justify-center text-[10px]">💀</div>
+                <div class="absolute -top-0.5 -end-0.5 w-4 h-4 bg-accent-red rounded-full flex items-center justify-center text-[10px]">💀</div>
             @elseif($isLover)
-                <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-pink rounded-full flex items-center justify-center text-[8px]">💕</div>
+                <div class="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 bg-accent-pink rounded-full flex items-center justify-center text-[8px]">💕</div>
             @elseif($isEnchanted)
-                <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-accent-green rounded-full flex items-center justify-center text-[8px]">✦</div>
+                <div class="absolute -top-0.5 -end-0.5 w-3.5 h-3.5 bg-accent-green rounded-full flex items-center justify-center text-[8px]">✦</div>
             @endif
         </div>
 

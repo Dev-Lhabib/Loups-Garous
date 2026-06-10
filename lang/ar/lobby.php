@@ -1,0 +1,35 @@
+<?php
+
+return [
+    'create_room' => 'إنشاء غرفة',
+    'join_room' => 'انضم إلى غرفة',
+    'room_code' => 'رمز الغرفة',
+    'your_nickname' => 'اسمك المستعار',
+    'nickname_placeholder' => 'أدخل اسمك المستعار',
+    'scan_to_join' => 'امسح رمز QR للانضمام إلى اللعبة',
+    'connected_players' => 'اللاعبون المتصلون',
+    'no_players_yet' => 'لم ينضم أي لاعب بعد',
+    'you_joined_as' => 'انضممت كـ',
+    'waiting_narrator' => 'بانتظار أن يبدأ الراوي...',
+    'role_config' => 'توزيع الأدوار',
+    'assigned' => 'مُخصص',
+    'players' => 'لاعبين',
+    'errors' => [
+        'game_started' => 'بدأت هذه اللعبة بالفعل.',
+        'already_joined' => 'لقد انضممت إلى هذه الغرفة بالفعل.',
+        'nickname_taken' => 'هذا الاسم المستعار مستخدم بالفعل.',
+        'room_full' => 'هذه الغرفة ممتلئة.',
+    ],
+    'validation' => [
+        'min_players' => 'مطلوب 4 لاعبين على الأقل للبدء.',
+        'role_count_mismatch' => 'يجب أن يتطابق عدد الأدوار تماماً مع عدد اللاعبين.',
+        'need_werewolf' => 'مطلوب على الأقل دور واحد من فصيلة الذئاب.',
+        'need_village' => 'مطلوب على الأقل دور واحد من فصيلة القرية.',
+        'two_sisters_exact' => 'الأختان تتطلبان لاعبين بالضبط.',
+        'three_brothers_exact' => 'الإخوة الثلاثة يتطلبون 3 لاعبين بالضبط.',
+        'unique_role_max' => 'يُسمح بـ :role واحد فقط.',
+        'werewolf_recommendation' => 'المُوصى به: :recommended ذئب. حالياً: :actual.',
+        'exceeds_player_count' => 'الأدوار المخصصة تتجاوز عدد اللاعبين.',
+        'waiting_for_players' => 'بانتظار :expected لاعبين (:actual انضموا).',
+    ],
+];

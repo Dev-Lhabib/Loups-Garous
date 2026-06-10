@@ -80,11 +80,11 @@
             <div class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
                 @foreach($alivePlayers as $p)
                     <button wire:click="selectTarget('{{ $p['id'] }}')"
-                            class="w-full px-4 py-3 bg-bg-surface/50 text-text-primary rounded-lg hover:bg-bg-elevated hover:border-accent-gold/30 border border-border-default transition-all duration-200 text-left flex items-center gap-3 group">
+                            class="w-full px-4 py-3 bg-bg-surface/50 text-text-primary rounded-lg hover:bg-bg-elevated hover:border-accent-gold/30 border border-border-default transition-all duration-200 text-start flex items-center gap-3 group">
                         <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary group-hover:text-accent-gold transition-colors">
                             {{ strtoupper(substr($p['nickname'], 0, 1)) }}
                         </div>
-                        <span class="font-medium group-hover:translate-x-0.5 transition-transform">{{ $p['nickname'] }}</span>
+                        <span class="font-medium group-hover:translate-x-[var(--tx-hover)] transition-transform duration-150">{{ $p['nickname'] }}</span>
                     </button>
                 @endforeach
             </div>
