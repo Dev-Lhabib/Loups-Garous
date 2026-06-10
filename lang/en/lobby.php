@@ -30,5 +30,6 @@ return [
         'unique_role_max' => 'Only 1 :role allowed.',
         'werewolf_recommendation' => 'Recommended: :recommended werewolf. Currently :actual.',
         'exceeds_player_count' => 'Assigned roles exceed player count.',
+        'waiting_for_players' => 'Waiting for :expected players (:actual joined).',
     ],
 ];

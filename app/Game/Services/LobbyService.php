@@ -88,13 +88,24 @@ class LobbyService
     public function validateGameStart(Room $room): array
     {
         $players = Player::where('room_id', $room->id)->where('is_narrator', false)->get();
-        $playerCount = $players->count();
+        $actualPlayerCount = $players->count();
         $settings = $room->settings ?? [];
         $roleCounts = $settings['role_counts'] ?? [];
+        $expectedPlayerCount = $settings['expected_player_count'] ?? $actualPlayerCount;
+
+        $errors = [];
+
+        if ($actualPlayerCount < $expectedPlayerCount) {
+            $errors[] = __('lobby.validation.waiting_for_players', [
+                'expected' => $expectedPlayerCount,
+                'actual' => $actualPlayerCount,
+            ]);
+        }
 
         $validator = app(RoleConfigValidator::class);
+        $errors = array_merge($errors, $validator->validate($expectedPlayerCount, $roleCounts));
 
-        return $validator->validate($playerCount, $roleCounts);
+        return $errors;
     }
 
     private function generateUniqueCode(): string

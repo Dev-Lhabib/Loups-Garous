@@ -30,5 +30,6 @@ return [
         'unique_role_max' => 'Seulement 1 :role autorisé.',
         'werewolf_recommendation' => 'Recommandé : :recommended loup-garou. Actuellement : :actual.',
         'exceeds_player_count' => 'Le nombre de rôles dépasse le nombre de joueurs.',
+        'waiting_for_players' => 'En attente de :expected joueurs (:actual ont rejoint).',
     ],
 ];

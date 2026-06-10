@@ -209,7 +209,8 @@ class RoleConfigValidator
             $playerCount <= 9 => 2,
             $playerCount <= 12 => 3,
             $playerCount <= 15 => 4,
-            default => 5,
+            $playerCount <= 18 => 5,
+            default => 6,
         };
     }
 
@@ -263,8 +264,26 @@ class RoleConfigValidator
                 'witch' => 1,
                 'hunter' => 1,
                 'bodyguard' => 1,
-                'cupid' => 1,
                 'villager' => 4,
+            ],
+            16 => [
+                'werewolf' => 4,
+                'seer' => 1,
+                'witch' => 1,
+                'hunter' => 1,
+                'bodyguard' => 1,
+                'fox' => 1,
+                'villager' => 7,
+            ],
+            20 => [
+                'werewolf' => 5,
+                'seer' => 1,
+                'witch' => 1,
+                'hunter' => 1,
+                'bodyguard' => 1,
+                'fox' => 1,
+                'cupid' => 1,
+                'villager' => 9,
             ],
         ];
     }
