@@ -27,6 +27,8 @@ return [
         'need_village' => 'Au moins 1 rôle de faction village est requis.',
         'two_sisters_exact' => 'Les Deux Sœurs nécessitent exactement 2 joueurs.',
         'three_brothers_exact' => 'Les Trois Frères nécessitent exactement 3 joueurs.',
-        'solo_max_one' => 'Les rôles de faction solo peuvent avoir au maximum 1 chacun.',
+        'unique_role_max' => 'Seulement 1 :role autorisé.',
+        'werewolf_recommendation' => 'Recommandé : :recommended loup-garou. Actuellement : :actual.',
+        'exceeds_player_count' => 'Le nombre de rôles dépasse le nombre de joueurs.',
     ],
 ];

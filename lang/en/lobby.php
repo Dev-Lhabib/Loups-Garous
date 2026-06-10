@@ -27,6 +27,8 @@ return [
         'need_village' => 'At least 1 village-faction role is required.',
         'two_sisters_exact' => 'Two Sisters requires exactly 2 players.',
         'three_brothers_exact' => 'Three Brothers requires exactly 3 players.',
-        'solo_max_one' => 'Solo faction roles can have at most 1 each.',
+        'unique_role_max' => 'Only 1 :role allowed.',
+        'werewolf_recommendation' => 'Recommended: :recommended werewolf. Currently :actual.',
+        'exceeds_player_count' => 'Assigned roles exceed player count.',
     ],
 ];

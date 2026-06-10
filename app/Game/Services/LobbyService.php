@@ -87,56 +87,14 @@ class LobbyService
 
     public function validateGameStart(Room $room): array
     {
-        $errors = [];
-
         $players = Player::where('room_id', $room->id)->where('is_narrator', false)->get();
         $playerCount = $players->count();
         $settings = $room->settings ?? [];
         $roleCounts = $settings['role_counts'] ?? [];
 
-        if ($playerCount < 4) {
-            $errors[] = __('lobby.validation.min_players');
-        }
+        $validator = app(RoleConfigValidator::class);
 
-        $totalRoles = array_sum($roleCounts);
-        if ($totalRoles !== $playerCount) {
-            $errors[] = __('lobby.validation.role_count_mismatch');
-        }
-
-        $hasWerewolf = false;
-        $hasVillage = false;
-
-        foreach ($roleCounts as $roleKey => $count) {
-            if ($count <= 0) continue;
-            $role = \App\Models\Role::where('key', $roleKey)->first();
-            if (!$role) continue;
-
-            if ($role->faction === 'werewolves' || $role->key === 'werewolf') {
-                $hasWerewolf = true;
-            }
-            if ($role->faction === 'village') {
-                $hasVillage = true;
-            }
-
-            if ($roleKey === 'two_sisters' && $count !== 2) {
-                $errors[] = __('lobby.validation.two_sisters_exact');
-            }
-            if ($roleKey === 'three_brothers' && $count !== 3) {
-                $errors[] = __('lobby.validation.three_brothers_exact');
-            }
-            if (in_array($roleKey, ['white_werewolf', 'pied_piper', 'angel']) && $count > 1) {
-                $errors[] = __('lobby.validation.solo_max_one');
-            }
-        }
-
-        if (!$hasWerewolf) {
-            $errors[] = __('lobby.validation.need_werewolf');
-        }
-        if (!$hasVillage) {
-            $errors[] = __('lobby.validation.need_village');
-        }
-
-        return $errors;
+        return $validator->validate($playerCount, $roleCounts);
     }
 
     private function generateUniqueCode(): string

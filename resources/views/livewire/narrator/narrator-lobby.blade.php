@@ -53,6 +53,23 @@
         <div>
             <h2 class="text-lg md:text-xl font-serif font-bold text-text-primary mb-4 md:mb-6 text-center">{{ __('ui.lobby.role_config') }}</h2>
 
+            {{-- Preset Templates --}}
+            @if($playerCount > 0)
+                <div class="text-center mb-4 md:mb-6">
+                    <p class="text-xs text-text-muted mb-2">{{ __('ui.lobby.presets') }}</p>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        @foreach([4, 6, 8, 10, 12] as $presetCount)
+                            @if($playerCount >= $presetCount)
+                                <button wire:click="loadPreset({{ $presetCount }})"
+                                        class="text-xs px-3 py-1.5 rounded-lg border border-border-default bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all duration-200 font-medium">
+                                    {{ $presetCount }} {{ __('ui.lobby.players') }}
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             @foreach($roles as $faction => $factionRoles)
                 @php
                     $factionConfig = match($faction) {
@@ -72,8 +89,13 @@
                             @php
                                 $count = $roleCounts[$role->key] ?? 0;
                                 $roleKey = $role->key;
+                                $totalAssigned = array_sum($roleCounts);
+                                $atIndividualMax = $count >= app(\App\Game\Services\RoleConfigValidator::class)->getMaxForRole($roleKey);
+                                $atTotalMax = $playerCount > 0 && $totalAssigned >= $playerCount;
+                                $isAtMax = $atIndividualMax || $atTotalMax;
+                                $hasRoleError = isset($roleErrors[$roleKey]);
                             @endphp
-                            <div class="glass-panel border {{ $factionConfig['border'] }} overflow-hidden group hover:glow-gold transition-all duration-200">
+                            <div class="glass-panel border {{ $factionConfig['border'] }} overflow-hidden group hover:glow-gold transition-all duration-200 {{ $hasRoleError ? 'border-accent-red/50' : '' }}">
                                 <div class="p-2 md:p-3">
                                     <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2">
                                         <x-role-icon :roleKey="$roleKey" class="text-base md:text-lg" />
@@ -82,6 +104,23 @@
                                     <p class="text-text-muted text-[9px] md:text-[10px] leading-relaxed line-clamp-2 mb-2 md:mb-3">
                                         {{ __("roles.{$roleKey}.description") }}
                                     </p>
+
+                                    {{-- Per-role validation error --}}
+                                    @if($hasRoleError)
+                                        <div class="mb-1.5">
+                                            @foreach($roleErrors[$roleKey] as $roleError)
+                                                <p class="text-accent-red text-[9px] leading-tight">⚠ {{ $roleError }}</p>
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    {{-- Max reached indicator --}}
+                                    @if($atIndividualMax && $count > 0)
+                                        <div class="mb-1.5">
+                                            <p class="text-accent-gold text-[9px] leading-tight">✓ {{ __('ui.lobby.max_reached') }}</p>
+                                        </div>
+                                    @endif
+
                                     <div class="flex items-center justify-between bg-bg-surface/50 rounded-lg p-1">
                                         <button wire:click="decrementRole('{{ $roleKey }}')"
                                                 class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-md text-text-muted hover:bg-bg-elevated hover:text-text-primary transition-colors text-sm md:text-base {{ $count <= 0 ? 'opacity-30 cursor-not-allowed' : '' }}"
@@ -90,7 +129,11 @@
                                         </button>
                                         <span class="text-accent-gold font-mono text-xs md:text-sm font-bold w-6 md:w-8 text-center tabular-nums">{{ $count }}</span>
                                         <button wire:click="incrementRole('{{ $roleKey }}')"
-                                                class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-md text-text-muted hover:bg-bg-elevated hover:text-text-primary transition-colors text-sm md:text-base">
+                                                class="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-md transition-colors text-sm md:text-base
+                                                       {{ $isAtMax
+                                                            ? 'text-text-muted/30 cursor-not-allowed'
+                                                            : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary' }}"
+                                                {{ $isAtMax ? 'disabled' : '' }}>
                                             +
                                         </button>
                                     </div>
@@ -111,19 +154,35 @@
                         <span class="text-text-primary font-mono text-lg md:text-xl font-bold">{{ $playerCount }}</span>
                         <span class="text-text-muted text-xs md:text-sm">{{ __('ui.lobby.players') }}</span>
                     </div>
-                    @if(array_sum($roleCounts) === $playerCount)
-                        <div class="flex items-center gap-1.5 text-accent-green text-xs">
-                            <span>✓</span>
-                            <span>{{ __('ui.lobby.all_assigned') }}</span>
-                        </div>
-                    @else
-                        <div class="flex items-center gap-1.5 text-accent-gold text-xs">
-                            <span>⚠</span>
-                            <span>{{ __('ui.lobby.needs_match') }}</span>
+
+                    {{-- Balance Indicator --}}
+                    @if($playerCount >= 4 && $balanceStatus)
+                        <div class="flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-lg
+                            @switch($balanceStatus)
+                                @case('balanced') bg-accent-green/10 text-accent-green @break
+                                @case('slightly_village_favored')
+                                @case('slightly_werewolf_favored')
+                                @case('werewolf_favored')
+                                @case('village_favored') bg-accent-gold/10 text-accent-gold @break
+                                @case('unbalanced') bg-accent-red/10 text-accent-red @break
+                                @default bg-bg-surface text-text-muted
+                            @endswitch">
+                            {{ __("ui.lobby.balance.{$balanceStatus}") }}
                         </div>
                     @endif
                 </div>
             </div>
+
+            {{-- Warnings --}}
+            @if(!empty($warnings))
+                <div class="glass-panel border border-accent-gold/40 bg-accent-gold/5 p-3 md:p-4 mb-4 md:mb-6">
+                    <div class="space-y-1">
+                        @foreach($warnings as $warning)
+                            <p class="text-accent-gold text-xs">⚠ {{ $warning }}</p>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             {{-- Validation Errors --}}
             @if(!empty($validationErrors))
