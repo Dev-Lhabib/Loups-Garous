@@ -229,6 +229,55 @@ class RoleConfigValidator
         return $this->specialGroupRoles;
     }
 
+    public function getRecommendedSetup(int $playerCount): array
+    {
+        $ww = $this->getRecommendedWerewolfCount($playerCount);
+        $setup = ['werewolf' => $ww];
+
+        if ($playerCount >= 4) $setup['seer'] = 1;
+        if ($playerCount >= 6) $setup['witch'] = 1;
+        if ($playerCount >= 8) $setup['hunter'] = 1;
+        if ($playerCount >= 10) $setup['bodyguard'] = 1;
+        if ($playerCount >= 14) $setup['fox'] = 1;
+        if ($playerCount >= 18) $setup['cupid'] = 1;
+
+        $assigned = array_sum($setup);
+        $villagers = max(0, $playerCount - $assigned);
+        if ($villagers > 0) $setup['villager'] = $villagers;
+
+        return $setup;
+    }
+
+    public function getRecommendedSetupExplanation(string $locale = 'en'): array
+    {
+        return [
+            'werewolf' => $locale === 'fr'
+                ? 'Les loups-garous créent une pression suffisante.'
+                : 'Werewolves create enough pressure.',
+            'seer' => $locale === 'fr'
+                ? 'La Voyante fournit des informations cruciales.'
+                : 'Seer provides crucial information.',
+            'witch' => $locale === 'fr'
+                ? 'La Sorcière apporte des décisions stratégiques.'
+                : 'Witch brings strategic decisions.',
+            'hunter' => $locale === 'fr'
+                ? 'Le Chasseur crée des conséquences après élimination.'
+                : 'Hunter creates consequences after elimination.',
+            'bodyguard' => $locale === 'fr'
+                ? 'Le Garde du corps protège les rôles clés.'
+                : 'Bodyguard protects key roles.',
+            'fox' => $locale === 'fr'
+                ? 'Le Renard peut détecter les loups par groupe.'
+                : 'Fox can detect wolves in groups.',
+            'cupid' => $locale === 'fr'
+                ? 'Cupidon crée des alliances inattendues.'
+                : 'Cupid creates unexpected alliances.',
+            'villager' => $locale === 'fr'
+                ? 'Les Villageois maintiennent l\'incertitude.'
+                : 'Villagers maintain uncertainty.',
+        ];
+    }
+
     public static function getPresets(): array
     {
         return [

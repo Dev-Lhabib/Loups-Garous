@@ -10,11 +10,16 @@ class JoinRoom extends Component
 {
     public string $code = '';
     public string $nickname = '';
+    public bool $hasCode = false;
+    public ?Room $detectedRoom = null;
 
     public function mount($code = null)
     {
-        if ($code = $code ?: request()->query('code')) {
+        $code = $code ?: request()->query('code');
+        if ($code) {
             $this->code = strtoupper(substr($code, 0, 6));
+            $this->hasCode = true;
+            $this->detectedRoom = Room::where('code', $this->code)->where('status', 'waiting')->first();
         }
     }
 
@@ -26,9 +31,7 @@ class JoinRoom extends Component
         ]);
 
         $room = Room::where('code', strtoupper($this->code))->firstOrFail();
-
         $player = $lobbyService->joinRoom($room, $this->nickname, request());
-
         $this->redirect(route('lobby.player', $room->code));
     }
 

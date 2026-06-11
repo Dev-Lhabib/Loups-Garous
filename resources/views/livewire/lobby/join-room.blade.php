@@ -6,28 +6,39 @@
         </div>
 
         <div class="space-y-1 md:space-y-2">
-            <h1 class="font-serif text-2xl md:text-3xl font-bold text-text-primary">{{ __('ui.lobby.join_room') }}</h1>
-            <p class="text-text-muted text-xs md:text-sm">{{ __('ui.home.subtitle') }}</p>
+            <h1 class="font-serif text-2xl md:text-3xl font-bold text-text-primary">{{ __('ui.join.join_room') }}</h1>
+            @if($detectedRoom)
+                <p class="text-text-muted text-xs md:text-sm">{{ __('ui.join.room_detected') }}</p>
+                <div class="inline-block mt-2 glass-panel border border-accent-gold/30 px-4 py-2">
+                    <p class="font-mono text-lg tracking-[0.25em] text-accent-gold font-bold">{{ $detectedRoom->code }}</p>
+                </div>
+            @elseif($hasCode)
+                <p class="text-text-muted text-xs md:text-sm">{{ __('ui.join.room_not_found') }}</p>
+            @else
+                <p class="text-text-muted text-xs md:text-sm">{{ __('ui.home.subtitle') }}</p>
+            @endif
         </div>
 
         <form wire:submit="submit" class="space-y-3 md:space-y-4">
-            <div class="text-start">
-                <label for="code" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.room_code') }}</label>
-                <input type="text"
-                       id="code"
-                       wire:model="code"
-                       placeholder="{{ __('ui.lobby.code_placeholder') }}"
-                       maxlength="6"
-                       class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-bg-surface border border-border-default rounded-xl text-text-primary placeholder:text-text-muted/50 focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/30 outline-none transition-all duration-200 text-center font-mono text-base md:text-lg uppercase tracking-widest"/>
-                @error('code') <p class="text-accent-red text-xs mt-1">{{ $message }}</p> @enderror
-            </div>
+            @if(!$hasCode)
+                <div class="text-start">
+                    <label for="code" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.room_code') }}</label>
+                    <input type="text"
+                           id="code"
+                           wire:model="code"
+                           placeholder="{{ __('ui.lobby.code_placeholder') }}"
+                           maxlength="6"
+                           class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-bg-surface border border-border-default rounded-xl text-text-primary placeholder:text-text-muted/50 focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/30 outline-none transition-all duration-200 text-center font-mono text-base md:text-lg uppercase tracking-widest"/>
+                    @error('code') <p class="text-accent-red text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+            @endif
 
             <div class="text-start">
-                <label for="nickname" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.lobby.your_nickname') }}</label>
+                <label for="nickname" class="block text-xs md:text-sm text-text-muted mb-1 font-medium">{{ __('ui.join.your_name') }}</label>
                 <input type="text"
                        id="nickname"
                        wire:model="nickname"
-                       placeholder="{{ __('ui.lobby.nickname_placeholder') }}"
+                       placeholder="{{ __('ui.join.name_placeholder') }}"
                        maxlength="20"
                        class="w-full px-3 md:px-4 py-2.5 md:py-3 bg-bg-surface border border-border-default rounded-xl text-text-primary text-sm md:text-base placeholder:text-text-muted/50 focus:border-accent-gold/50 focus:ring-1 focus:ring-accent-gold/30 outline-none transition-all duration-200"/>
                 @error('nickname') <p class="text-accent-red text-xs mt-1">{{ $message }}</p> @enderror
@@ -38,9 +49,11 @@
                 {{ __('ui.button.join_room') }}
             </button>
 
-            <a href="{{ route('rooms.create') }}" class="block text-xs md:text-sm text-text-muted hover:text-accent-gold transition-colors">
-                {{ __('ui.button.create_room') }}
-            </a>
+            @if(!$hasCode)
+                <a href="{{ route('rooms.create') }}" class="block text-xs md:text-sm text-text-muted hover:text-accent-gold transition-colors">
+                    {{ __('ui.button.create_room') }}
+                </a>
+            @endif
         </form>
     </div>
 </div>

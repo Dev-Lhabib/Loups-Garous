@@ -19,15 +19,18 @@ class NarratorLobby extends Component
     public string $qrSvg = '';
     public array $roleCounts = [];
     public int $playerCount = 0;
-    public int $expectedPlayerCount = 0;
+    public int $expectedPlayerCount = 9;
     public string $mode = 'beginner';
-    public ?int $activePreset = null;
-    public ?int $pendingPreset = null;
+    public bool $setupApplied = false;
+    public bool $villagerAutoFilled = true;
     public array $validationErrors = [];
     public array $roleErrors = [];
     public array $warnings = [];
     public string $balanceStatus = 'unbalanced';
     public bool $canStart = false;
+    public string $joinUrl = '';
+    public string $copied = '';
+    public bool $showQr = true;
 
     public function mount(Room $room)
     {
@@ -44,12 +47,12 @@ class NarratorLobby extends Component
         $this->room = $room;
 
         $ngrokUrl = $room->settings['ngrok_url'] ?? env('APP_URL', 'http://localhost');
-        $joinUrl = rtrim($ngrokUrl, '/') . '/join/' . $room->code;
-        $this->qrSvg = QrHelper::generate($joinUrl);
+        $this->joinUrl = rtrim($ngrokUrl, '/') . '/join/' . $room->code;
+        $this->qrSvg = QrHelper::generate($this->joinUrl);
 
-        $this->expectedPlayerCount = $room->settings['expected_player_count'] ?? 0;
+        $this->expectedPlayerCount = $room->settings['expected_player_count'] ?? 9;
         $this->mode = $room->settings['config_mode'] ?? 'beginner';
-        $this->activePreset = $room->settings['active_preset'] ?? null;
+        $this->setupApplied = $room->settings['setup_applied'] ?? false;
 
         $this->refreshPlayerCount();
         $this->initRoleCounts();
@@ -71,67 +74,62 @@ class NarratorLobby extends Component
         foreach ($roles as $role) {
             $this->roleCounts[$role->key] = $saved[$role->key] ?? 0;
         }
+
+        if ($this->setupApplied || $this->mode === 'beginner') {
+            $this->autoFillVillagers();
+        }
     }
 
     public function incrementExpectedPlayers()
     {
         if ($this->expectedPlayerCount >= 24) return;
         $this->expectedPlayerCount++;
+        if ($this->mode === 'beginner') {
+            $this->setupApplied = false;
+        }
+        $this->autoFillVillagers();
         $this->saveSettings();
     }
 
     public function decrementExpectedPlayers()
     {
-        if ($this->expectedPlayerCount <= 0) return;
+        if ($this->expectedPlayerCount <= 4) return;
         $this->expectedPlayerCount--;
+        if ($this->mode === 'beginner') {
+            $this->setupApplied = false;
+        }
+        $this->autoFillVillagers();
         $this->saveSettings();
     }
 
     public function toggleMode()
     {
         $this->mode = $this->mode === 'beginner' ? 'advanced' : 'beginner';
+        if ($this->mode === 'beginner') {
+            $this->autoFillVillagers();
+        }
         $this->saveSettings();
     }
 
-    public function selectPreset(int $playerCount)
+    public function applyRecommendedSetup()
     {
-        $presets = RoleConfigValidator::getPresets();
-        if (!isset($presets[$playerCount])) return;
-        $this->pendingPreset = $playerCount;
-    }
+        if ($this->expectedPlayerCount < 4) return;
 
-    public function confirmPreset()
-    {
-        if (!$this->pendingPreset) return;
-
-        $presets = RoleConfigValidator::getPresets();
-        $pc = $this->pendingPreset;
-
-        if (!isset($presets[$pc])) {
-            $this->pendingPreset = null;
-            return;
-        }
-
-        $this->expectedPlayerCount = $pc;
-        $this->activePreset = $pc;
+        $setup = app(RoleConfigValidator::class)->getRecommendedSetup($this->expectedPlayerCount);
 
         foreach ($this->roleCounts as $key => $_) {
             $this->roleCounts[$key] = 0;
         }
 
-        foreach ($presets[$pc] as $roleKey => $count) {
+        foreach ($setup as $roleKey => $count) {
             if (isset($this->roleCounts[$roleKey])) {
                 $this->roleCounts[$roleKey] = $count;
             }
         }
 
-        $this->pendingPreset = null;
+        $this->setupApplied = true;
+        $this->villagerAutoFilled = true;
         $this->saveRoleCounts();
-    }
-
-    public function cancelPreset()
-    {
-        $this->pendingPreset = null;
     }
 
     public function incrementRole(string $roleKey)
@@ -142,8 +140,14 @@ class NarratorLobby extends Component
         $current = $this->roleCounts[$roleKey];
         if (app(RoleConfigValidator::class)->isRoleAtMax($roleKey, $current, $effectiveCount, $this->roleCounts)) return;
 
-        $this->activePreset = null;
+        $this->setupApplied = false;
         $this->roleCounts[$roleKey]++;
+
+        if ($roleKey !== 'villager') {
+            $this->autoFillVillagers();
+        }
+
+        $this->villagerAutoFilled = false;
         $this->saveRoleCounts();
     }
 
@@ -151,16 +155,37 @@ class NarratorLobby extends Component
     {
         if (!isset($this->roleCounts[$roleKey])) return;
         if ($this->roleCounts[$roleKey] <= 0) return;
-        $this->activePreset = null;
+
+        $this->setupApplied = false;
         $this->roleCounts[$roleKey]--;
+
+        if ($roleKey !== 'villager') {
+            $this->autoFillVillagers();
+        }
+
+        $this->villagerAutoFilled = false;
         $this->saveRoleCounts();
+    }
+
+    private function autoFillVillagers()
+    {
+        if ($this->expectedPlayerCount <= 0) return;
+
+        $nonVillagerCount = 0;
+        foreach ($this->roleCounts as $key => $count) {
+            if ($key !== 'villager') {
+                $nonVillagerCount += $count;
+            }
+        }
+
+        $this->roleCounts['villager'] = max(0, $this->expectedPlayerCount - $nonVillagerCount);
     }
 
     private function saveRoleCounts()
     {
         $settings = $this->room->settings ?? [];
         $settings['role_counts'] = $this->roleCounts;
-        $settings['active_preset'] = $this->activePreset;
+        $settings['setup_applied'] = $this->setupApplied;
         $settings['expected_player_count'] = $this->expectedPlayerCount;
         $settings['config_mode'] = $this->mode;
         $this->room->settings = $settings;
@@ -173,7 +198,7 @@ class NarratorLobby extends Component
         $settings = $this->room->settings ?? [];
         $settings['expected_player_count'] = $this->expectedPlayerCount;
         $settings['config_mode'] = $this->mode;
-        $settings['active_preset'] = $this->activePreset;
+        $settings['setup_applied'] = $this->setupApplied;
         $this->room->settings = $settings;
         $this->room->save();
         $this->validateConfig();
@@ -198,6 +223,16 @@ class NarratorLobby extends Component
         $player->delete();
         $this->refreshPlayerCount();
         $this->validateConfig();
+    }
+
+    public function copyLink()
+    {
+        $this->copied = 'link';
+    }
+
+    public function copyShareLink()
+    {
+        $this->copied = 'share';
     }
 
     public function startGame(GameEngine $engine)
@@ -236,6 +271,7 @@ class NarratorLobby extends Component
         $effectiveCount = $this->expectedPlayerCount > 0 ? $this->expectedPlayerCount : $this->playerCount;
         $totalAssigned = array_sum($this->roleCounts);
         $remaining = max(0, $effectiveCount - $totalAssigned);
+        $recommendedSetup = app(RoleConfigValidator::class)->getRecommendedSetup($this->expectedPlayerCount);
 
         return view('livewire.narrator.narrator-lobby', [
             'roles' => $roles,
@@ -246,6 +282,8 @@ class NarratorLobby extends Component
             'effectiveCount' => $effectiveCount,
             'totalAssigned' => $totalAssigned,
             'remaining' => $remaining,
+            'recommendedSetup' => $recommendedSetup,
+            'explanations' => app(RoleConfigValidator::class)->getRecommendedSetupExplanation(app()->getLocale()),
         ])->layout('layouts.app');
     }
 }
