@@ -24,7 +24,7 @@
     close() { this.open = false; },
     switchLocale(code) {
         this.open = false;
-        fetch('{{ route('locale.switch', '') }}/' + code + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search))
+        fetch('/locale/' + code + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search))
             .then(() => window.location.reload());
     }
 }" x-on:keydown.escape="close" class="relative">
