@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'app' => [
+        'name' => 'رفيق لوب-غارو',
+    ],
     'button' => [
         'create_room' => 'إنشاء غرفة',
         'join_room' => 'انضم إلى غرفة',
@@ -58,8 +61,34 @@ return [
         'open_link' => 'فتح الرابط',
         'share_link' => 'مشاركة الرابط',
         'show_qr' => 'إظهار QR',
-        'share_room_text' => 'انضم إلى غرفتي في :code في لعبة Werewolf!',
+        'share_room_text' => 'انضم إلى غرفتي! رمز الغرفة: :code',
         'shared' => 'تمت المشاركة!',
+        'assigned_roles' => 'الأدوار المخصصة',
+        'minimum' => 'الحد الأدنى',
+        'recommended_setup' => 'الإعداد الموصى به',
+        'setup_applied' => 'تم تطبيق الإعداد',
+        'apply_setup' => 'تطبيق الإعداد',
+        'why_this_setup' => 'لماذا هذا الإعداد؟',
+        'auto_filled' => 'ملء تلقائي',
+        'share_room' => 'مشاركة الغرفة',
+        'config_summary' => 'الإعداد الحالي',
+        'missing_roles' => 'ينقص :count أدوار',
+        'ready_to_start' => 'جاهز للبدء',
+        'fix_errors_to_start' => 'أصلح أخطاء الإعداد للبدء',
+        'min_players_to_start' => 'يلزم :count لاعبين على الأقل',
+        'waiting_for_players_join' => 'بانتظار انضمام لاعبين...',
+        'waiting_for_x_more' => 'بانتظار :count لاعبين إضافيين...',
+        'all_connected' => 'جميع اللاعبين متصلون ✓',
+        'werewolf_guide' => 'دليل الذئاب',
+        'werewolf_guide_note' => 'هذه توصية فقط. يمكنك اختيار أي عدد من الذئاب.',
+    ],
+    'join' => [
+        'join_room' => 'انضم إلى الغرفة',
+        'room_detected' => 'تم اكتشاف الغرفة! أدخل اسمك للانضمام.',
+        'room_not_found' => 'الغرفة غير موجودة. تحقق من الرمز أدناه.',
+        'your_name' => 'اسمك',
+        'name_placeholder' => 'أدخل اسمك',
+        'joined' => 'انضم',
     ],
     'language' => [
         'switch' => 'تغيير اللغة',
@@ -97,6 +126,7 @@ return [
         'all_actions_submitted' => 'تم تقديم جميع الإجراءات!',
         'countdown' => 'الحل خلال :seconds...',
         'resolve_now' => 'حل الآن',
+        'resolve_prefix' => 'الحل خلال',
         'force_resolve_confirm' => 'فرض حل الليل؟ سيتم تخطي الإجراءات غير المقدمة.',
         'night_progress' => 'تقدم الليل',
         'roles_completed' => 'مستيقظ',
@@ -150,6 +180,7 @@ return [
         'scapegoat_eliminated' => 'تم إقصاء كبش الفداء بسبب التعادل',
         'village_idiot_spared' => ':nickname هو غبي القرية وينجو!',
         'hunter_select' => 'اختر هدفك كصياد',
+        'player_unknown' => 'لاعب #:id',
     ],
     'result' => [
         'wolves_found' => 'الذئاب بينهم!',
@@ -196,6 +227,9 @@ return [
         'lovers' => 'عشاق',
         'disconnected' => 'غير متصل',
         'resolving_night' => 'جارٍ حل الليل...',
+        'none' => 'لا شيء',
+        'waiting' => 'بانتظار',
+        'seconds_ago' => 'منذ :seconds ثوان',
     ],
     'narrator' => [
         'pending_actions' => 'الإجراءات المعلقة',
@@ -264,7 +298,8 @@ return [
         'you_were' => 'كنت الـ',
     ],
     'home' => [
-        'subtitle' => 'Les Loups-Garous de Thiercelieux - تطبيق مرافق للعبة التخمين الاجتماعي الكلاسيكية.',
+        'subtitle' => 'لوب غارو دو تيرسيلو - تطبيق مرافق للعبة التخمين الاجتماعي الكلاسيكية.',
+        'brand_subtitle' => 'لوب غارو دو تيرسيلو',
     ],
     'factions' => [
         'village' => 'القرية',

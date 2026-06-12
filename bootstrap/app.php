@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup('web', \App\Http\Middleware\IdentifyPlayer::class);
 
+        $middleware->appendToGroup('web', \App\Http\Middleware\SetLocale::class);
+
         $middleware->trustProxies(
             at: '*',
             headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |

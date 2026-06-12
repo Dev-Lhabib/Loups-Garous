@@ -28,8 +28,8 @@
                 <a href="{{ route('home') }}"
                    class="flex items-center gap-2 text-sm md:text-base font-serif font-bold text-accent-gold hover:text-accent-gold-dark transition-colors whitespace-nowrap">
                     <span class="text-base md:text-lg">🐺</span>
-                    <span class="hidden sm:inline">{{ config('app.name') }}</span>
-                    <span class="sm:hidden">{{ config('app.name') }}</span>
+                    <span class="hidden sm:inline">{{ __('ui.app.name') }}</span>
+                    <span class="sm:hidden">{{ __('ui.app.name') }}</span>
                 </a>
             </div>
 

@@ -83,7 +83,9 @@
                                 </div>
                                 <div class="flex justify-between text-sm py-2 border-b border-border-default">
                                     <span class="text-text-muted">{{ __('ui.game.status') }}</span>
-                                    <span :class="modalPlayer.is_alive ? 'text-accent-green' : 'text-accent-red'" x-text="modalPlayer.is_alive ? 'Alive' : 'Dead'"></span>
+                                    <span :class="modalPlayer.is_alive ? 'text-accent-green' : 'text-accent-red'">
+                                        <span x-text="modalPlayer.is_alive ? '{{ __('ui.game.alive') }}' : '{{ __('ui.game.dead') }}'"></span>
+                                    </span>
                                 </div>
                                 <div class="text-sm py-2 text-text-secondary" x-text="modalPlayer.role?.description"></div>
                             </div>
@@ -108,7 +110,9 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse"></span>
                     <span class="text-xs text-accent-green font-semibold">{{ __('ui.night.all_actions_submitted') }}</span>
-                    <span x-show="autoResolveCountdown !== null && autoResolveCountdown > 0" class="text-xs text-accent-green font-mono" x-text="'Resolving in ' + autoResolveCountdown + 's'"></span>
+                    <span x-show="autoResolveCountdown !== null && autoResolveCountdown > 0" class="text-xs text-accent-green font-mono">
+                        {{ __('ui.night.resolve_prefix') }} <span x-text="autoResolveCountdown"></span>s
+                    </span>
                 </div>
                 <button wire:click="advancePhase('day')"
                         class="px-3 py-1.5 bg-accent-green text-white text-xs font-semibold rounded-lg hover:bg-accent-green/90 transition-colors">
@@ -496,7 +500,7 @@
                                             @foreach($disconnectedPlayers as $dp)
                                                 <div class="text-xs bg-accent-red/10 text-accent-red px-2 py-1 rounded border border-accent-red/20 flex justify-between">
                                                     <span>{{ $dp['nickname'] }}</span>
-                                                    <span class="text-[10px] opacity-70">{{ $dp['elapsed'] }}s ago</span>
+                                                    <span class="text-[10px] opacity-70">{{ __('ui.game.seconds_ago', ['seconds' => $dp['elapsed']]) }}</span>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -559,12 +563,12 @@
                                         <div class="flex justify-between">
                                             <span class="text-text-muted">{{ __('ui.night.pending_roles') }}</span>
                                             <span class="{{ count($pendingRoleKeys) > 0 ? 'text-accent-red' : 'text-accent-green' }}">
-                                                {{ count($pendingRoleKeys) > 0 ? implode(', ', $pendingRoleKeys) : 'None' }}
+                                                {{ count($pendingRoleKeys) > 0 ? implode(', ', $pendingRoleKeys) : __('ui.game.none') }}
                                             </span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span class="text-text-muted">{{ __('ui.night.completed_roles') }}</span>
-                                            <span class="text-accent-green">{{ count($completedRoleKeys) > 0 ? implode(', ', $completedRoleKeys) : 'None' }}</span>
+                                            <span class="text-accent-green">{{ count($completedRoleKeys) > 0 ? implode(', ', $completedRoleKeys) : __('ui.game.none') }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span class="text-text-muted">{{ __('ui.game.disconnected') }}</span>
@@ -585,7 +589,7 @@
                                         <div class="flex justify-between">
                                             <span class="text-text-muted">{{ __('ui.night.auto_resolve') }}</span>
                                             <span class="{{ $autoResolveTimeLeft !== null ? 'text-accent-green' : 'text-text-muted' }}">
-                                                {{ $autoResolveTimeLeft !== null ? $autoResolveTimeLeft . 's' : 'Waiting' }}
+                                                {{ $autoResolveTimeLeft !== null ? $autoResolveTimeLeft . 's' : __('ui.game.waiting') }}
                                             </span>
                                         </div>
                                         @if(count($disconnectedPlayers) > 0)

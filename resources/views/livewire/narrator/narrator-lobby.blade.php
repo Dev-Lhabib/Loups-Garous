@@ -22,7 +22,7 @@
                             class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border-default bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all duration-200 whitespace-nowrap">
                         📋 <span class="hidden sm:inline">{{ __('ui.lobby.copy_link') }}</span>
                     </button>
-                    <button x-data @click="if (navigator.share) { navigator.share({ title: '{{ config('app.name') }}', text: '{{ __('ui.lobby.share_room_text', ['code' => $room->code]) }}', url: '{{ $joinUrl }}' }); } else { navigator.clipboard.writeText('{{ $joinUrl }}'); }"
+                    <button x-data @click="if (navigator.share) { navigator.share({ title: '{{ __('ui.app.name') }}', text: '{{ __('ui.lobby.share_room_text', ['code' => $room->code]) }}', url: '{{ $joinUrl }}' }); } else { navigator.clipboard.writeText('{{ $joinUrl }}'); }"
                             class="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border-default bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all duration-200 whitespace-nowrap">
                         📤 <span class="hidden sm:inline">{{ __('ui.lobby.share_link') }}</span>
                     </button>
@@ -446,7 +446,7 @@
                             class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-lg border border-border-default bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all duration-200 whitespace-nowrap">
                         📋 {{ __('ui.lobby.copy_link') }}
                     </button>
-                    <button x-data @click="if (navigator.share) { navigator.share({ title: '{{ config('app.name') }}', text: '{{ __('ui.lobby.share_room_text', ['code' => $room->code]) }}', url: '{{ $joinUrl }}' }); } else { navigator.clipboard.writeText('{{ $joinUrl }}'); }"
+                    <button x-data @click="if (navigator.share) { navigator.share({ title: '{{ __('ui.app.name') }}', text: '{{ __('ui.lobby.share_room_text', ['code' => $room->code]) }}', url: '{{ $joinUrl }}' }); } else { navigator.clipboard.writeText('{{ $joinUrl }}'); }"
                             class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-lg border border-border-default bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all duration-200 whitespace-nowrap">
                         📤 {{ __('ui.lobby.share_link') }}
                     </button>

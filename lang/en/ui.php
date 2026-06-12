@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'app' => [
+        'name' => 'Loup-Garou Companion',
+    ],
     'button' => [
         'create_room' => 'Create a game',
         'join_room' => 'Join a game',
@@ -108,6 +111,7 @@ return [
         'all_actions_submitted' => 'All actions submitted!',
         'countdown' => 'Resolving in :seconds...',
         'resolve_now' => 'Resolve now',
+        'resolve_prefix' => 'Resolving in',
         'force_resolve_confirm' => 'Force resolve night? Unsubmitted actions will be skipped.',
         'night_progress' => 'Night Progress',
         'roles_completed' => 'Awake',
@@ -161,6 +165,7 @@ return [
         'scapegoat_eliminated' => 'Scapegoat eliminated by tie',
         'village_idiot_spared' => ':nickname is the Village Idiot and survives!',
         'hunter_select' => 'Choose your target as the Hunter',
+        'player_unknown' => 'Player #:id',
     ],
     'result' => [
         'wolves_found' => 'Wolves are among them!',
@@ -207,6 +212,9 @@ return [
         'lovers' => 'Lovers',
         'disconnected' => 'Disconnected',
         'resolving_night' => 'Resolving night...',
+        'none' => 'None',
+        'waiting' => 'Waiting',
+        'seconds_ago' => ':seconds seconds ago',
     ],
     'narrator' => [
         'pending_actions' => 'Pending actions',
@@ -274,6 +282,12 @@ return [
         'you_lose' => 'You Lose',
         'you_were' => 'You were the',
     ],
+    'language' => [
+        'switch' => 'Switch language',
+        'en' => 'English',
+        'fr' => 'Français',
+        'ar' => 'العربية',
+    ],
     'join' => [
         'join_room' => 'Join Room',
         'room_detected' => 'Room detected! Enter your name to join.',
@@ -284,6 +298,7 @@ return [
     ],
     'home' => [
         'subtitle' => 'Les Loups-Garous de Thiercelieux - A companion app for the classic social deduction game.',
+        'brand_subtitle' => 'Les Loups-Garous de Thiercelieux',
     ],
     'factions' => [
         'village' => 'Village',

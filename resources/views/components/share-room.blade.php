@@ -22,7 +22,7 @@
     shareLink() {
         if (navigator.share) {
             navigator.share({
-                title: '{{ config('app.name') }}',
+                title: '{{ __('ui.app.name') }}',
                 text: '{{ __('ui.lobby.share_room_text', ['code' => $roomCode]) }}',
                 url: '{{ $shareUrl }}',
             }).catch(() => {});

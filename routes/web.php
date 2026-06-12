@@ -17,6 +17,12 @@ Route::get('/locale/{locale}', function (string $locale) {
         session(['locale' => $locale]);
         app()->setLocale($locale);
     }
+
+    $redirect = request()->query('redirect');
+    if ($redirect && str_starts_with($redirect, '/')) {
+        return redirect($redirect);
+    }
+
     return redirect(route('home'));
 })->name('locale.switch');
 

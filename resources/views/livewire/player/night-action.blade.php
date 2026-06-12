@@ -90,7 +90,7 @@
         <div class="space-y-4 text-center py-4">
             <div class="flex flex-col items-center gap-3">
                 <x-role-icon :roleKey="$role->key" class="text-3xl animate-floatSlow" />
-                <p class="text-text-primary font-medium">{{ __("roles.{$role->key}.action_prompt") }}</p>
+                <p class="text-text-primary font-medium">{{ __("ui.roles.{$role->key}.action_prompt") }}</p>
             </div>
             <div class="space-y-2">
                 @foreach($actionTypes as $at)

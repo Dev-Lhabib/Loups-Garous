@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'app' => [
+        'name' => 'Compagnon Loup-Garou',
+    ],
     'button' => [
         'create_room' => 'Créer une partie',
         'join_room' => 'Rejoindre une partie',
@@ -108,6 +111,7 @@ return [
         'all_actions_submitted' => 'Toutes les actions soumises !',
         'countdown' => 'Résolution dans :seconds...',
         'resolve_now' => 'Résoudre maintenant',
+        'resolve_prefix' => 'Résolution dans',
         'force_resolve_confirm' => 'Forcer la résolution de la nuit ? Les actions non soumises seront ignorées.',
         'night_progress' => 'Progression nocturne',
         'roles_completed' => 'Réveillé',
@@ -161,6 +165,7 @@ return [
         'scapegoat_eliminated' => 'Bouc émissaire éliminé par égalité',
         'village_idiot_spared' => ':nickname est l\'Idiot du village et survit !',
         'hunter_select' => 'Choisissez votre cible en tant que Chasseur',
+        'player_unknown' => 'Joueur #:id',
     ],
     'result' => [
         'wolves_found' => 'Des loups sont parmi eux !',
@@ -207,6 +212,9 @@ return [
         'lovers' => 'Amoureux',
         'disconnected' => 'Déconnecté',
         'resolving_night' => 'Résolution de la nuit...',
+        'none' => 'Aucun',
+        'waiting' => 'En attente',
+        'seconds_ago' => 'Il y a :seconds secondes',
     ],
     'narrator' => [
         'pending_actions' => 'Actions en attente',
@@ -274,6 +282,12 @@ return [
         'you_lose' => 'Vous perdez',
         'you_were' => 'Vous étiez',
     ],
+    'language' => [
+        'switch' => 'Changer la langue',
+        'en' => 'English',
+        'fr' => 'Français',
+        'ar' => 'العربية',
+    ],
     'join' => [
         'join_room' => 'Rejoindre la partie',
         'room_detected' => 'Partie détectée ! Entrez votre nom pour rejoindre.',
@@ -284,6 +298,7 @@ return [
     ],
     'home' => [
         'subtitle' => 'Les Loups-Garous de Thiercelieux - Une application compagnon pour le jeu de déduction sociale classique.',
+        'brand_subtitle' => 'Les Loups-Garous de Thiercelieux',
     ],
     'factions' => [
         'village' => 'Village',

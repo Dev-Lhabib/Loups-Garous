@@ -27,7 +27,7 @@
             @php $maxCount = max(($tally ? max($tally) : 1), 1); @endphp
             <div class="group relative">
                 <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-surface/50 text-sm relative z-10">
-                    <span class="text-text-primary truncate me-2">{{ $players->firstWhere('id', $targetId)?->nickname ?? "Player #{$targetId}" }}</span>
+                    <span class="text-text-primary truncate me-2">{{ $players->firstWhere('id', $targetId)?->nickname ?? __('ui.vote.player_unknown', ['id' => $targetId]) }}</span>
                     <span class="text-accent-red font-mono text-xs font-bold">{{ $count }}</span>
                 </div>
                 <div class="absolute inset-0 rounded-lg bg-accent-red/5 transition-all duration-300"
