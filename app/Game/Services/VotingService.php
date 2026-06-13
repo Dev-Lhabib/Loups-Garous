@@ -10,6 +10,7 @@ use App\Game\Engine\WinConditionChecker;
 use App\Models\CoupleBond;
 use App\Models\GameState;
 use App\Models\Player;
+use App\Models\Role;
 use App\Models\Vote;
 use Illuminate\Support\Facades\DB;
 
@@ -102,13 +103,99 @@ class VotingService
         if ($scapegoat) {
             $data = $state->data ?? [];
             $data['scapegoat_eliminated_by_tie'] = true;
+            $data['scapegoat_decree_pending'] = true;
+            $data['scapegoat_decree_player_id'] = $scapegoat->id;
             $state->data = $data;
             $state->save();
 
-            return $this->eliminatePlayerWithChain($state, $scapegoat);
+            return null;
         }
 
         return $this->winChecker->check($state);
+    }
+
+    public function submitScapegoatDecree(GameState $state, array $bannedPlayerIds): ?\App\Game\Factions\FactionInterface
+    {
+        $data = $state->data ?? [];
+        $scapegoatId = $data['scapegoat_decree_player_id'] ?? null;
+        if (!$scapegoatId) return null;
+
+        $data['vote_ban_next_round'] = $bannedPlayerIds;
+        $data['scapegoat_decree_pending'] = false;
+        unset($data['scapegoat_decree_player_id']);
+        $state->data = $data;
+        $state->save();
+
+        $scapegoat = Player::find($scapegoatId);
+        if (!$scapegoat || !$scapegoat->is_alive) return $this->winChecker->check($state);
+
+        return $this->eliminatePlayerWithChain($state, $scapegoat);
+    }
+
+    public function checkDevotedServantSwap(GameState $state, Player $eliminated): bool
+    {
+        $data = $state->data ?? [];
+        if (!empty($data['devoted_servant_used'])) return false;
+
+        $devotedServant = Player::where('room_id', $state->room_id)
+            ->where('is_alive', true)
+            ->where('is_narrator', false)
+            ->whereHas('role', fn ($q) => $q->where('key', 'devoted_servant'))
+            ->first();
+
+        if (!$devotedServant) return false;
+
+        $data['devoted_servant_swap_pending'] = true;
+        $data['devoted_servant_swap_target_id'] = $eliminated->id;
+        $state->data = $data;
+        $state->save();
+
+        return true;
+    }
+
+    public function acceptDevotedServantSwap(GameState $state, Player $devotedServant): ?\App\Game\Factions\FactionInterface
+    {
+        $data = $state->data ?? [];
+        $targetId = $data['devoted_servant_swap_target_id'] ?? null;
+        if (!$targetId) return null;
+
+        $eliminated = Player::find($targetId);
+        if (!$eliminated) return null;
+
+        $devotedRole = $devotedServant->role;
+        $eliminatedRole = $eliminated->role;
+
+        $devotedServant->role_id = $eliminatedRole?->id;
+        $devotedServant->save();
+
+        $eliminated->role_id = $devotedRole?->id;
+        $eliminated->is_alive = true;
+        $eliminated->save();
+
+        $data['devoted_servant_used'] = true;
+        $data['devoted_servant_swap_pending'] = false;
+        unset($data['devoted_servant_swap_target_id']);
+        $state->data = $data;
+        $state->save();
+
+        return $this->winChecker->check($state);
+    }
+
+    public function declineDevotedServantSwap(GameState $state): ?\App\Game\Factions\FactionInterface
+    {
+        $data = $state->data ?? [];
+        $targetId = $data['devoted_servant_swap_target_id'] ?? null;
+        if (!$targetId) return null;
+
+        $data['devoted_servant_swap_pending'] = false;
+        unset($data['devoted_servant_swap_target_id']);
+        $state->data = $data;
+        $state->save();
+
+        $eliminated = Player::find($targetId);
+        if (!$eliminated || !$eliminated->is_alive) return $this->winChecker->check($state);
+
+        return $this->eliminatePlayerWithChain($state, $eliminated);
     }
 
     private function eliminateOrSpare(GameState $state, Player $target): ?\App\Game\Factions\FactionInterface
@@ -134,6 +221,11 @@ class VotingService
             }
         }
 
+        $swapPending = $this->checkDevotedServantSwap($state, $target);
+        if ($swapPending) {
+            return null;
+        }
+
         return $this->eliminatePlayerWithChain($state, $target);
     }
 
@@ -153,7 +245,7 @@ class VotingService
         return $this->applyDeathWithChain($state, $player, $checkAngel);
     }
 
-    private function applyDeathWithChain(GameState $state, Player $player, bool $checkAngel = false): ?\App\Game\Factions\FactionInterface
+    public function applyDeathWithChain(GameState $state, Player $player, bool $checkAngel = false): ?\App\Game\Factions\FactionInterface
     {
         $toProcess = [[$player, $checkAngel]];
         $processedIds = [];
@@ -172,6 +264,21 @@ class VotingService
 
                 $winner = $this->winChecker->check($state);
                 if ($winner) return $winner;
+
+                $bond = CoupleBond::where('game_state_id', $state->id)
+                    ->where(function ($q) use ($current) {
+                        $q->where('player_id', $current->id)
+                          ->orWhere('partner_id', $current->id);
+                    })->first();
+
+                if ($bond) {
+                    $partnerId = $bond->player_id === $current->id ? $bond->partner_id : $bond->player_id;
+                    $partner = Player::find($partnerId);
+                    if ($partner && $partner->is_alive) {
+                        event(new LoverDied($current, $partner));
+                        $toProcess[] = [$partner, false];
+                    }
+                }
 
                 continue;
             }

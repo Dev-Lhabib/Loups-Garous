@@ -184,6 +184,17 @@
 
             {{-- LEFT: Player grid --}}
             <div class="lg:col-span-3 space-y-4">
+                {{-- BEAR TAMER GROWL --}}
+                @if($state->phase === 'day' && $bearTamerGrowl)
+                    <div class="glass-panel border border-accent-gold/50 p-3 flex items-center gap-3 animate-slideInDown">
+                        <span class="text-2xl">🐻</span>
+                        <div>
+                            <p class="text-accent-gold text-xs font-semibold">{{ __('ui.narrator.bear_tamer_growl') }}</p>
+                            <p class="text-text-muted text-[10px]">{{ __('ui.narrator.bear_tamer_growl_hint') }}</p>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- NIGHT PROGRESS SECTION --}}
                 @if($state->phase === 'night')
                     @php

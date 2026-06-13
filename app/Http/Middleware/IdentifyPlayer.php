@@ -12,13 +12,17 @@ class IdentifyPlayer
     {
         $token = $request->cookie('session_token');
 
-        if ($token) {
-            $player = Player::where('session_token', $token)->first();
-
-            if ($player) {
-                $request->merge(['_player' => $player]);
-            }
+        if (!$token) {
+            abort(401);
         }
+
+        $player = Player::where('session_token', $token)->first();
+
+        if (!$player) {
+            abort(401);
+        }
+
+        $request->merge(['_player' => $player]);
 
         return $next($request);
     }

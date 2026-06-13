@@ -260,6 +260,8 @@ return [
         'little_girl_caught' => 'Petite Fille surprise',
         'confirm_little_girl' => 'Éliminer la Petite Fille ? Elle a été surprise en train d\'espionner !',
         'catch_little_girl' => 'Attraper et éliminer',
+        'bear_tamer_growl' => 'L\'ours du Dompteur d\'Ours gronde !',
+        'bear_tamer_growl_hint' => 'Un loup-garou est assis à côté du Dompteur d\'Ours. Annoncez-le au village.',
     ],
     'role' => [
         'hold_to_reveal' => 'Maintenez pour révéler',
@@ -267,6 +269,10 @@ return [
         'faction' => 'Faction',
         'ability' => 'Capacité',
         'night_order' => 'Ordre de réveil',
+        'secret_role' => 'Rôle Secret',
+        'keep_private' => 'Gardez votre téléphone privé 👀',
+        'night_phase' => 'Phase de Nuit',
+        'night_wait' => 'Attendez les instructions du narrateur',
     ],
 
     'win' => [
@@ -308,5 +314,30 @@ return [
         'angel' => 'Ange',
         'lovers' => 'Amoureux',
         'neutral' => 'Neutre',
+    ],
+    'werewolf' => [
+        'selections' => 'Sélections du clan',
+        'all_agree' => 'Tous les loups sont d\'accord !',
+        'confirm_kill' => 'Confirmer la tuerie',
+        'no_targets' => 'Aucune cible valide',
+    ],
+    'scapegoat' => [
+        'decree_title' => 'Votre Dernier Décret',
+        'decree_prompt' => 'Sélectionnez les joueurs qui seront EXCLUS du prochain vote.',
+        'submit_decree' => 'Soumettre le décret',
+    ],
+    'stuttering_judge' => [
+        'trigger_title' => 'Deuxième Vote',
+        'trigger_button' => 'Déclencher',
+        'confirm_trigger' => 'Déclencher un deuxième vote ? Ceci ne peut être fait qu\'une seule fois.',
+    ],
+    'devoted_servant' => [
+        'swap_title' => 'Échanger les Identités',
+        'swap_prompt' => 'Un joueur a été éliminé par vote. Voulez-vous échanger vos rôles avec lui ?',
+        'swap_target' => 'Joueur éliminé',
+        'accept_swap' => 'Accepter l\'échange',
+        'decline_swap' => 'Refuser',
+        'swap_accepted' => 'Vous avez échangé vos rôles !',
+        'swap_declined' => 'Vous avez refusé l\'échange.',
     ],
 ];

@@ -3,6 +3,7 @@
 namespace App\Livewire\Player;
 
 use App\Events\SuspiciousAccessAttempt;
+use App\Game\Services\VotingService;
 use App\Models\GameState;
 use App\Models\Player;
 use App\Models\Room;
@@ -14,6 +15,8 @@ class PlayerGameView extends Component
     public Player $player;
     public ?GameState $state = null;
     public bool $ready = false;
+    public array $scapegoatDecreeBanned = [];
+    public bool $scapegoatDecreeSubmitted = false;
 
     public function mount(Room $room)
     {
@@ -119,6 +122,7 @@ class PlayerGameView extends Component
 
     public function onGameFinished()
     {
+        $this->player = $this->player->fresh(['role']);
         $this->state = $this->room->gameState;
     }
 
@@ -135,6 +139,7 @@ class PlayerGameView extends Component
             return;
         }
         $this->state = $gs->fresh();
+        $this->player = $this->player->fresh(['role']);
         $phase = $this->state->phase;
         $labels = [
             'waiting' => __('ui.phase.waiting'),
@@ -237,6 +242,117 @@ class PlayerGameView extends Component
         }
     }
 
+    public function toggleDecreeBan(string $playerId): void
+    {
+        $idx = array_search($playerId, $this->scapegoatDecreeBanned);
+        if ($idx !== false) {
+            unset($this->scapegoatDecreeBanned[$idx]);
+            $this->scapegoatDecreeBanned = array_values($this->scapegoatDecreeBanned);
+        } else {
+            $this->scapegoatDecreeBanned[] = $playerId;
+        }
+    }
+
+    public function submitDecree(): void
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        if (empty($data['scapegoat_decree_pending'])) return;
+        if (($data['scapegoat_decree_player_id'] ?? null) !== $this->player->id) return;
+
+        $votingService = app(VotingService::class);
+        $winner = $votingService->submitScapegoatDecree($state, $this->scapegoatDecreeBanned);
+
+        if ($winner) {
+            $engine = app(\App\Game\Engine\GameEngine::class);
+            $engine->endGame($state, $winner);
+        }
+
+        $this->scapegoatDecreeSubmitted = true;
+        $this->state = $this->state?->fresh();
+    }
+
+    public function triggerSecondVote(): void
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state || $state->phase !== 'voting') return;
+
+        $role = $this->player->role;
+        if (!$role || $role->key !== 'stuttering_judge') return;
+
+        $data = $state->data ?? [];
+        if (!empty($data['stuttering_judge_used'])) return;
+
+        $data['stuttering_judge_used'] = true;
+        $data['second_vote_triggered'] = true;
+        $state->data = $data;
+        $state->save();
+
+        \App\Models\Vote::where('game_state_id', $state->id)->delete();
+
+        $this->state = $this->state?->fresh();
+    }
+
+    public function acceptSwap(): void
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        if (empty($data['devoted_servant_swap_pending'])) return;
+
+        $role = $this->player->role;
+        if (!$role || $role->key !== 'devoted_servant') abort(403);
+
+        $votingService = app(VotingService::class);
+        $winner = $votingService->acceptDevotedServantSwap($state, $this->player);
+
+        if ($winner) {
+            $engine = app(\App\Game\Engine\GameEngine::class);
+            $engine->endGame($state, $winner);
+        }
+
+        $this->player = $this->player->fresh(['role']);
+        $this->state = $this->state?->fresh();
+    }
+
+    public function declineSwap(): void
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        if (empty($data['devoted_servant_swap_pending'])) return;
+
+        $role = $this->player->role;
+        if (!$role || $role->key !== 'devoted_servant') abort(403);
+
+        $votingService = app(VotingService::class);
+        $winner = $votingService->declineDevotedServantSwap($state);
+
+        if ($winner) {
+            $engine = app(\App\Game\Engine\GameEngine::class);
+            $engine->endGame($state, $winner);
+        }
+
+        $this->player = $this->player->fresh(['role']);
+        $this->state = $this->state?->fresh();
+    }
+
     public function render()
     {
         $this->state = $this->room?->gameState;
@@ -244,6 +360,10 @@ class PlayerGameView extends Component
         if (!$this->state) {
             $this->redirect(route('lobby.player', $this->room));
             return;
+        }
+
+        if (!$this->player->relationLoaded('role')) {
+            $this->player->load('role');
         }
 
         $players = collect();

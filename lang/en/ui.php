@@ -260,6 +260,8 @@ return [
         'little_girl_caught' => 'Little Girl Caught',
         'confirm_little_girl' => 'Eliminate the Little Girl? She was caught peeking!',
         'catch_little_girl' => 'Catch & Eliminate',
+        'bear_tamer_growl' => 'The Bear Tamer\'s bear growls!',
+        'bear_tamer_growl_hint' => 'A werewolf sits next to the Bear Tamer. Announce this to the village.',
     ],
     'role' => [
         'hold_to_reveal' => 'Hold to reveal',
@@ -267,6 +269,10 @@ return [
         'faction' => 'Faction',
         'ability' => 'Ability',
         'night_order' => 'Wake order',
+        'secret_role' => 'Secret Role',
+        'keep_private' => 'Keep your phone private 👀',
+        'night_phase' => 'Night Phase',
+        'night_wait' => 'Wait for the narrator\'s instructions',
     ],
 
     'win' => [
@@ -308,5 +314,30 @@ return [
         'angel' => 'Angel',
         'lovers' => 'Lovers',
         'neutral' => 'Neutral',
+    ],
+    'werewolf' => [
+        'selections' => 'Pack selections',
+        'all_agree' => 'All wolves agree!',
+        'confirm_kill' => 'Confirm Kill',
+        'no_targets' => 'No valid targets',
+    ],
+    'scapegoat' => [
+        'decree_title' => 'Your Last Decree',
+        'decree_prompt' => 'Select players who will be BANNED from voting next round.',
+        'submit_decree' => 'Submit Decree',
+    ],
+    'stuttering_judge' => [
+        'trigger_title' => 'Second Vote',
+        'trigger_button' => 'Trigger',
+        'confirm_trigger' => 'Trigger a second vote? This can only be done once.',
+    ],
+    'devoted_servant' => [
+        'swap_title' => 'Swap Identities',
+        'swap_prompt' => 'A player has been voted out. Would you like to swap roles with them?',
+        'swap_target' => 'Player eliminated',
+        'accept_swap' => 'Accept Swap',
+        'decline_swap' => 'Decline',
+        'swap_accepted' => 'You have swapped roles!',
+        'swap_declined' => 'You declined the swap.',
     ],
 ];

@@ -124,8 +124,13 @@ class NarratorDashboard extends Component
 
         if (!$littleGirl) return;
 
-        $engine = app(GameEngine::class);
-        $engine->eliminatePlayer($littleGirl, $this->state);
+        $votingService = app(\App\Game\Services\VotingService::class);
+        $winner = $votingService->applyDeathWithChain($this->state, $littleGirl);
+
+        if ($winner) {
+            $engine = app(GameEngine::class);
+            $engine->endGame($this->state, $winner);
+        }
 
         $this->state = $this->state->fresh();
         $this->addLogEntry('player_eliminated', ['nickname' => $littleGirl->nickname]);
@@ -265,6 +270,7 @@ class NarratorDashboard extends Component
         $data = $this->state->data ?? [];
         $heartbeats = $data['player_heartbeats'] ?? [];
         $disconnected = [];
+        $forceKilled = false;
 
         $alivePlayers = Player::where('room_id', $this->room->id)
             ->where('is_alive', true)
@@ -282,11 +288,42 @@ class NarratorDashboard extends Component
                         'last_ping' => $lastPing,
                         'elapsed' => $elapsed,
                     ];
+
+                    if ($elapsed > 120) {
+                        $this->forceKillDisconnected($p, $data);
+                        $forceKilled = true;
+                    }
                 }
             }
         }
 
         return $disconnected;
+    }
+
+    private function forceKillDisconnected(Player $player, array &$data): void
+    {
+        $player->is_alive = false;
+        $player->save();
+
+        $disconnectedPlayers = $data['disconnected_players'] ?? [];
+        $disconnectedPlayers[] = [
+            'player_id' => $player->id,
+            'nickname' => $player->nickname,
+            'disconnected_at' => now()->toIso8601String(),
+            'force_killed' => true,
+        ];
+        $data['disconnected_players'] = $disconnectedPlayers;
+        $this->state->data = $data;
+        $this->state->save();
+
+        event(new \App\Events\PlayerEliminated($player));
+
+        $winChecker = app(\App\Game\Engine\WinConditionChecker::class);
+        $winner = $winChecker->check($this->state);
+        if ($winner) {
+            $engine = app(GameEngine::class);
+            $engine->endGame($this->state, $winner);
+        }
     }
 
     public function getNightElapsed(): int
@@ -529,6 +566,8 @@ class NarratorDashboard extends Component
             return $p->is_alive && $p->role && $p->role->key === 'little_girl';
         });
 
+        $bearTamerGrowl = $this->checkBearTamerGrowl($players);
+
         return view('livewire.narrator.narrator-dashboard', [
             'players' => $players,
             'availableTransitions' => $availableTransitions,
@@ -547,7 +586,48 @@ class NarratorDashboard extends Component
             'pendingRoleKeys' => $pendingRoleKeys,
             'completedRoleKeys' => $completedRoleKeys,
             'littleGirlAlive' => $littleGirlAlive,
+            'bearTamerGrowl' => $bearTamerGrowl,
         ])->layout('layouts.app');
+    }
+
+    private function checkBearTamerGrowl($players): ?array
+    {
+        $data = $this->state->data ?? [];
+        if (empty($data['bear_tamer_alive'])) return null;
+
+        $bearTamer = $players->first(function ($p) {
+            return $p->is_alive && $p->role && $p->role->key === 'bear_tamer';
+        });
+        if (!$bearTamer) return null;
+
+        $seatOrder = $data['seat_order'] ?? [];
+        if (empty($seatOrder)) return null;
+
+        $position = array_search($bearTamer->id, $seatOrder);
+        if ($position === false) return null;
+
+        $count = count($seatOrder);
+        $leftIndex = ($position - 1 + $count) % $count;
+        $rightIndex = ($position + 1) % $count;
+
+        $adjacentIds = [$seatOrder[$leftIndex], $seatOrder[$rightIndex]];
+
+        $werewolfKeys = ['werewolf', 'big_bad_wolf', 'accursed_wolf_father', 'white_werewolf'];
+
+        $adjacentWerewolves = [];
+        foreach ($adjacentIds as $adjId) {
+            $adjPlayer = $players->firstWhere('id', $adjId);
+            if ($adjPlayer && $adjPlayer->is_alive && $adjPlayer->role && in_array($adjPlayer->role->key, $werewolfKeys)) {
+                $adjacentWerewolves[] = $adjPlayer->nickname;
+            }
+        }
+
+        if (empty($adjacentWerewolves)) return null;
+
+        return [
+            'growls' => true,
+            'werewolf_count' => count($adjacentWerewolves),
+        ];
     }
 
     private function getTransitions(string $phase): array

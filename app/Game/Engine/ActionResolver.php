@@ -17,6 +17,7 @@ use App\Game\Actions\Werewolves\AccursedWolfFatherConvertAction;
 use App\Game\Actions\Werewolves\BigBadWolfKillAction;
 use App\Game\Actions\Werewolves\WerewolfKillAction;
 use App\Game\Actions\Werewolves\WhiteWerewolfKillAction;
+use App\Game\Actions\Werewolves\WolfHoundChooseSideAction;
 use App\Models\CoupleBond;
 use App\Models\GameState;
 use App\Models\NightAction;
@@ -31,6 +32,7 @@ class ActionResolver
         'extra_kill' => BigBadWolfKillAction::class,
         'convert' => AccursedWolfFatherConvertAction::class,
         'solo_kill' => WhiteWerewolfKillAction::class,
+        'choose_side' => WolfHoundChooseSideAction::class,
         'protect' => BodyguardProtectAction::class,
         'inspect' => SeerInspectAction::class,
         'save' => WitchSaveAction::class,
@@ -128,6 +130,8 @@ class ActionResolver
                     }
                 } elseif ($action instanceof CupidLinkAction) {
                     $action->resolve($state);
+                } elseif ($action instanceof WolfHoundChooseSideAction) {
+                    $action->resolve($state);
                 }
             }
 
@@ -209,6 +213,28 @@ class ActionResolver
 
                 event(new PlayerEliminated($infected));
 
+                $bond = CoupleBond::where('game_state_id', $state->id)
+                    ->where(function ($q) use ($infectedId) {
+                        $q->where('player_id', $infectedId)
+                          ->orWhere('partner_id', $infectedId);
+                    })->first();
+
+                if ($bond) {
+                    $partnerId = $bond->player_id === $infectedId ? $bond->partner_id : $bond->player_id;
+                    $partner = Player::find($partnerId);
+                    if ($partner && $partner->is_alive) {
+                        event(new LoverDied($infected, $partner));
+                        $partner->is_alive = false;
+                        $partner->save();
+                        event(new PlayerEliminated($partner));
+                    }
+                }
+
+                $winner = $this->winChecker->check($state);
+                if ($winner) {
+                    $this->engine()->endGame($state, $winner);
+                }
+
                 $data['infected_werewolf_id'] = null;
                 $state->data = $data;
                 $state->save();
@@ -231,22 +257,7 @@ class ActionResolver
 
             $role = $player->role;
 
-            // Hunter shot check (fires before partner death)
-            if ($role && $role->key === 'hunter') {
-                $eliminatedNicknames[] = $player->nickname;
-                $player->is_alive = false;
-                $player->save();
-                event(new PlayerEliminated($player));
-
-                $winner = $this->winChecker->check($state);
-                if ($winner) {
-                    $this->engine()->endGame($state, $winner);
-                    return;
-                }
-                continue;
-            }
-
-            // Knight with Rusty Sword — mark werewolf killer
+            // Knight with Rusty Sword — mark werewolf killer before death
             if ($role && $role->key === 'knight_with_rusty_sword') {
                 $data = $state->data ?? [];
                 $data['knight_killed_by_werewolf'] = true;
@@ -267,7 +278,7 @@ class ActionResolver
                 return;
             }
 
-            // Lover death chain
+            // Lover death chain — partner dies immediately after
             $bond = CoupleBond::where('game_state_id', $state->id)
                 ->where(function ($q) use ($playerId) {
                     $q->where('player_id', $playerId)

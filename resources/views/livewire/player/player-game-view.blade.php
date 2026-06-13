@@ -147,7 +147,7 @@
 
         @if($state->phase === 'waiting')
             {{-- Ready phase --}}
-            <livewire:player.role-card :player="$player" :wire:key="'role-'.$player->id" />
+            <livewire:player.secret-role-card :player="$player" :wire:key="'role-'.$player->id" />
 
             <div class="w-full max-w-md animate-fadeInUp">
                 @if($ready)
@@ -182,7 +182,7 @@
 
         @else
             {{-- Normal game --}}
-            <livewire:player.role-card :player="$player" :wire:key="'role-'.$player->id" />
+            <livewire:player.secret-role-card :player="$player" :wire:key="'role-'.$player->id" />
 
             @php $lastNightDeaths = $state->data['last_night_deaths'] ?? []; @endphp
 
@@ -252,9 +252,115 @@
                         <p class="text-text-muted/60 text-xs mt-2">{{ __('ui.game.you_are_dead_subtitle') }}</p>
                     </div>
                 @elseif($state->phase === 'night' && !$player->is_narrator)
-                    <livewire:player.night-action :room="$room" :player="$player" :wire:key="'night-action-'.$player->id" />
+                    @php
+                        $isWerewolf = $player->role && in_array($player->role->key, ['werewolf', 'big_bad_wolf', 'accursed_wolf_father', 'white_werewolf']);
+                    @endphp
+                    @if($isWerewolf)
+                        <livewire:werewolves.werewolf-kill-panel :room="$room" :player="$player" :wire:key="'wolf-kill-'.$player->id" />
+                    @else
+                        <livewire:player.night-action :room="$room" :player="$player" :wire:key="'night-action-'.$player->id" />
+                    @endif
                 @elseif($state->phase === 'voting' && !$player->is_narrator)
-                    <livewire:player.voting-panel :room="$room" :player="$player" :wire:key="'voting-'.$player->id" />
+                    @php
+                        $data = $state->data ?? [];
+                        $isScapegoatDecreePending = !empty($data['scapegoat_decree_pending']) && ($data['scapegoat_decree_player_id'] ?? null) === $player->id;
+                        $isStutteringJudge = $player->role && $player->role->key === 'stuttering_judge';
+                        $judgeCanTrigger = $isStutteringJudge && empty($data['stuttering_judge_used']);
+                        $isDevotedServant = $player->role && $player->role->key === 'devoted_servant';
+                        $swapPending = !empty($data['devoted_servant_swap_pending']) && $isDevotedServant;
+                    @endphp
+                    @if($swapPending)
+                        {{-- Devoted Servant swap UI --}}
+                        <div class="glass-panel border border-accent-purple/30 p-5 animate-fadeInUp">
+                            <div class="space-y-4">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🔄</div>
+                                    <p class="text-text-primary font-semibold">{{ __('ui.devoted_servant.swap_title') }}</p>
+                                    <p class="text-text-muted text-xs mt-1">{{ __('ui.devoted_servant.swap_prompt') }}</p>
+                                </div>
+                                @php
+                                    $swapTargetId = $data['devoted_servant_swap_target_id'] ?? null;
+                                    $swapTarget = $swapTargetId ? \App\Models\Player::find($swapTargetId) : null;
+                                @endphp
+                                @if($swapTarget)
+                                    <div class="bg-bg-surface/50 border border-border-default rounded-lg p-3 text-center">
+                                        <p class="text-text-muted text-xs">{{ __('ui.devoted_servant.swap_target') }}</p>
+                                        <p class="text-text-primary font-semibold mt-1">{{ $swapTarget->nickname }}</p>
+                                        @if($swapTarget->role)
+                                            <p class="text-accent-gold text-sm mt-1">{{ $swapTarget->role->key }}</p>
+                                        @endif
+                                    </div>
+                                @endif
+                                <div class="flex gap-3">
+                                    <button wire:click="declineSwap"
+                                            class="flex-1 py-3 bg-bg-surface border border-border-default text-text-muted font-semibold rounded-lg hover:bg-bg-elevated transition-all duration-200 text-sm">
+                                        {{ __('ui.devoted_servant.decline_swap') }}
+                                    </button>
+                                    <button wire:click="acceptSwap"
+                                            wire:confirm="{{ __('ui.devoted_servant.swap_title') }}"
+                                            class="flex-1 py-3 bg-accent-purple text-white font-bold rounded-lg hover:bg-accent-purple/90 transition-all duration-200 text-sm shadow-lg hover:scale-[1.02] active:scale-95">
+                                        {{ __('ui.devoted_servant.accept_swap') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($isScapegoatDecreePending && !$scapegoatDecreeSubmitted)
+                        {{-- Scapegoat decree UI --}}
+                        <div class="glass-panel border border-accent-gold/30 p-5 animate-fadeInUp">
+                            <div class="space-y-4">
+                                <div class="text-center">
+                                    <div class="text-3xl mb-2">🐐</div>
+                                    <p class="text-text-primary font-semibold">{{ __('ui.scapegoat.decree_title') }}</p>
+                                    <p class="text-text-muted text-xs mt-1">{{ __('ui.scapegoat.decree_prompt') }}</p>
+                                </div>
+                                <div class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
+                                    @php
+                                        $decreeTargets = \App\Models\Player::where('room_id', $room->id)
+                                            ->where('is_alive', true)
+                                            ->where('is_narrator', false)
+                                            ->where('id', '!=', $player->id)
+                                            ->orderBy('nickname')
+                                            ->get();
+                                    @endphp
+                                    @foreach($decreeTargets as $dt)
+                                        @php $isBanned = in_array($dt->id, $scapegoatDecreeBanned); @endphp
+                                        <button wire:click="toggleDecreeBan('{{ $dt->id }}')"
+                                                class="w-full px-4 py-2.5 rounded-lg text-start flex items-center gap-3 transition-all duration-200
+                                                       {{ $isBanned
+                                                           ? 'bg-accent-red/10 border border-accent-red/40'
+                                                           : 'bg-bg-surface/50 border border-border-default hover:bg-bg-elevated' }}">
+                                            <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs transition-colors
+                                                        {{ $isBanned ? 'bg-accent-red border-accent-red text-white' : 'border-border-default' }}">
+                                                @if($isBanned) ✕ @endif
+                                            </div>
+                                            <span class="text-sm {{ $isBanned ? 'text-accent-red line-through' : 'text-text-primary' }}">{{ $dt->nickname }}</span>
+                                        </button>
+                                    @endforeach
+                                </div>
+                                <button wire:click="submitDecree"
+                                        class="w-full py-3 bg-accent-gold text-bg-primary font-bold rounded-lg hover:bg-accent-gold-dark transition-all duration-200 text-sm shadow-lg hover:scale-[1.02] active:scale-95">
+                                    {{ __('ui.scapegoat.submit_decree') }}
+                                </button>
+                            </div>
+                        </div>
+                    @else
+                        <livewire:player.voting-panel :room="$room" :player="$player" :wire:key="'voting-'.$player->id" />
+                        @if($judgeCanTrigger)
+                            <div class="glass-panel border border-accent-purple/30 p-3 mt-2">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-lg">⚖️</span>
+                                        <span class="text-xs text-accent-purple font-semibold">{{ __('ui.stuttering_judge.trigger_title') }}</span>
+                                    </div>
+                                    <button wire:click="triggerSecondVote"
+                                            wire:confirm="{{ __('ui.stuttering_judge.confirm_trigger') }}"
+                                            class="px-3 py-1.5 bg-accent-purple text-white text-xs font-semibold rounded-lg hover:bg-accent-purple/90 transition-colors">
+                                        {{ __('ui.stuttering_judge.trigger_button') }}
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
+                    @endif
                 @elseif($state->phase === 'day' && !$mySeerResult && !$myFoxResult)
                     <div class="glass-panel border border-border-default p-8 text-center animate-slideUpReveal">
                         <div class="text-5xl mb-4 animate-floatSlow">☀️</div>

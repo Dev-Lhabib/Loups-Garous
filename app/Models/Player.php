@@ -11,6 +11,12 @@ class Player extends Model
         'is_alive', 'is_host', 'is_narrator', 'voting_banned',
     ];
 
+    protected $hidden = [
+        'session_token',
+        'created_at',
+        'updated_at',
+    ];
+
     protected function casts(): array
     {
         return [

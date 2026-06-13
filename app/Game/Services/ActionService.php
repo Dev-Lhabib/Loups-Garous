@@ -35,6 +35,11 @@ class ActionService
 
         $target = $data['target_id'] ? Player::find($data['target_id']) : null;
 
+        if ($target) {
+            if ($target->room_id !== $player->room_id) abort(403);
+            if (!$target->is_alive) abort(403);
+        }
+
         $action = NightAction::create([
             'game_state_id' => $state->id,
             'player_id' => $player->id,

@@ -16,15 +16,17 @@ class NightAction extends Component
     public bool $confirming = false;
     public ?NightActionModel $submittedAction = null;
     public array $alivePlayers = [];
-    public bool $isDecoy = false;
+    public bool $hasNightAction = false;
     public ?string $currentActionType = null;
     public bool $actionSelected = false;
     public array $submittedActions = [];
     public bool $wantsMoreActions = false;
-    public ?array $decoyPuzzle = null;
+    public ?string $wolfHoundSide = null;
+    public array $decoy = [];
+    public bool $panelRevealed = false;
+    public ?array $roleData = null;
 
     private array $multiActionRoles = ['witch'];
-    private array $decoyTypes = ['math', 'riddle', 'count', 'unscramble', 'sequence'];
 
     public function mount(Room $room, Player $player)
     {
@@ -34,32 +36,32 @@ class NightAction extends Component
         }
 
         $this->room = $room;
-        $this->player = $player;
+        $this->player = $player->fresh(['role']);
 
-        if (!$player->is_alive || $player->is_narrator) return;
+        if (!$this->player->is_alive || $this->player->is_narrator) return;
 
         $state = $room->gameState;
         if (!$state || $state->phase !== 'night') return;
 
-        $role = $player->role;
+        $role = $this->player->role;
+
+        $this->hasNightAction = $role && $role->night_order !== null;
+
+        if (!$this->hasNightAction) {
+            $this->decoy = \App\Helpers\DecoyHelper::random(app()->getLocale());
+            return;
+        }
 
         $this->alivePlayers = Player::where('room_id', $room->id)
             ->where('is_alive', true)
             ->where('is_narrator', false)
-            ->where('id', '!=', $player->id)
+            ->where('id', '!=', $this->player->id)
             ->orderBy('nickname')
             ->get()
             ->toArray();
 
-        $this->isDecoy = !$role || $role->night_order === null;
-
-        if ($this->isDecoy) {
-            $this->generateDecoyPuzzle();
-            return;
-        }
-
         $existing = NightActionModel::where('game_state_id', $state->id)
-            ->where('player_id', $player->id)
+            ->where('player_id', $this->player->id)
             ->whereNull('resolved_at')
             ->get();
 
@@ -109,27 +111,59 @@ class NightAction extends Component
         $this->currentActionType = null;
     }
 
-    private function generateDecoyPuzzle(): void
+    public function selectWolfHoundSide(string $side): void
     {
-        $locale = app()->getLocale();
-        $decoys = trans("decoys", [], $locale);
-        if (!is_array($decoys)) $decoys = trans("decoys", [], 'en');
+        $this->wolfHoundSide = $side;
+        $this->confirming = true;
+    }
 
-        $type = $this->decoyTypes[array_rand($this->decoyTypes)];
-        $items = $decoys[$type] ?? [];
-        if (empty($items)) {
-            $this->decoyPuzzle = ['type' => 'math', 'content' => '13 × 7 = ?'];
-            return;
+    public function confirmWolfHoundSide(): void
+    {
+        $requestPlayer = request()->get('_player');
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
+
+        $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+            'action_type' => 'choose_side',
+            'metadata' => ['side' => $this->wolfHoundSide],
+        ]);
+
+        if ($action) {
+            $this->submittedActions[] = 'choose_side';
+            $this->submitted = true;
+            $this->submittedAction = $action;
+            $this->confirming = false;
+            $this->wolfHoundSide = null;
+            $this->wantsMoreActions = false;
         }
-        $this->decoyPuzzle = [
-            'type' => $type,
-            'content' => $items[array_rand($items)],
-        ];
     }
 
     public function refreshDecoy(): void
     {
-        $this->generateDecoyPuzzle();
+        $this->decoy = \App\Helpers\DecoyHelper::random(app()->getLocale());
+    }
+
+    public function revealPanel(): void
+    {
+        if (!$this->roleData) {
+            $role = $this->player->role;
+            if ($role) {
+                $this->roleData = [
+                    'key' => $role->key,
+                    'name' => __("roles.{$role->key}.name"),
+                    'has_night_action' => $role->night_order !== null,
+                    'action_prompt' => __("ui.roles.{$role->key}.action_prompt"),
+                ];
+            }
+        }
+        $this->panelRevealed = true;
+    }
+
+    public function hidePanel(): void
+    {
+        $this->panelRevealed = false;
     }
 
     private function getActionTypesForRole(string $roleKey): array
@@ -160,11 +194,7 @@ class NightAction extends Component
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
 
-        if ($this->isDecoy) {
-            $this->submitted = true;
-            $this->confirming = false;
-            return;
-        }
+        if (!$this->hasNightAction) return;
 
         $role = $this->player->role;
         if (!$role || $role->night_order === null) return;
@@ -190,13 +220,20 @@ class NightAction extends Component
 
     public function render()
     {
+        if (!$this->player->relationLoaded('role')) {
+            $this->player->load('role');
+        }
+
         $role = $this->player->role;
 
         return view('livewire.player.night-action', [
             'role' => $role,
-            'isDecoy' => $this->isDecoy,
+            'hasNightAction' => $this->hasNightAction,
             'actionTypes' => $role ? $this->getActionTypesForRole($role->key) : [],
             'isMultiAction' => $role && in_array($role->key, $this->multiActionRoles),
+            'decoy' => $this->decoy,
+            'panelRevealed' => $this->panelRevealed,
+            'roleData' => $this->roleData,
         ]);
     }
 }

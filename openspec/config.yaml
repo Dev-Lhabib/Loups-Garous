@@ -1,0 +1,83 @@
+project:
+  name: Werewolf Multiplayer Game
+  description: |
+    A real-time multiplayer Werewolf (Loups-Garous) game where a narrator manages rooms,
+    players join using room codes or share links, configure roles, play night/day phases,
+    vote, and determine winners.
+
+stack:
+  backend:
+    framework: Laravel
+    version: "13.x"
+    language: PHP
+    php_version: ">=8.3"
+
+  frontend:
+    framework: Livewire
+    styling: Tailwind CSS
+    javascript:
+      - Alpine.js
+      - Vite
+
+  database:
+    engine: MySQL
+    version: "8.0+"
+
+architecture:
+  style:
+    - MVC
+    - Component-based UI
+    - Game Engine Pattern
+    - Event-driven state management
+
+modules:
+  - Room Management
+  - Player Management
+  - Narrator Dashboard
+  - Role Configuration
+  - Game Engine
+  - Role Abilities
+  - Night Actions
+  - Day Discussion
+  - Voting System
+  - Elimination Resolution
+  - Win Condition Detection
+  - Localization (EN/FR/AR)
+  - QR Code and Share Links
+
+development:
+  coding_standards:
+    - PSR-12
+    - Laravel Best Practices
+    - SOLID Principles
+
+  testing_focus:
+    - Multiplayer synchronization
+    - Game state transitions
+    - Role interactions
+    - Edge cases
+    - Security validation
+
+quality_rules:
+  - Do not break existing game mechanics.
+  - Prefer reusable components.
+  - Keep Livewire components small and maintainable.
+  - Avoid duplicate business logic.
+  - Keep game rules inside the Game Engine.
+  - Use translation keys for all UI text.
+  - Ensure mobile-first responsive design.
+
+security:
+  rules:
+    - Validate all player actions.
+    - Ensure dead players cannot perform actions.
+    - Ensure players cannot access other players' roles.
+    - Validate narrator-only actions.
+    - Prevent invalid game state transitions.
+
+ux_principles:
+  - The game should be playable by non-technical users.
+  - Joining a room must take less than 10 seconds.
+  - The narrator should be able to configure a game in less than 30 seconds.
+  - Avoid unnecessary confirmation dialogs or puzzles.
+  - Support touch-friendly mobile gameplay.

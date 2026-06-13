@@ -1,5 +1,20 @@
 @extends('errors::minimal')
 
-@section('title', __('Forbidden'))
-@section('code', '403')
-@section('message', __($exception->getMessage() ?: 'Forbidden'))
+@section('title', __('errors.403.title'))
+
+@section('icon')
+    <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-accent-red/30 to-accent-red/5 border-2 border-accent-red/30 flex items-center justify-center">
+        <span class="text-3xl">🚫</span>
+    </div>
+@endsection
+
+@section('message')
+    {{ $exception->getMessage() ?: __('errors.403.message') }}
+@endsection
+
+@section('action')
+    <a href="{{ route('home') }}"
+       class="inline-block py-3 px-6 bg-accent-gold text-bg-primary font-bold rounded-xl hover:bg-accent-gold-dark transition-all duration-200 hover:scale-[1.02] active:scale-95 shadow-lg text-sm">
+        {{ __('errors.403.action') }}
+    </a>
+@endsection

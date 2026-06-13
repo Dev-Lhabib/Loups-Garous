@@ -346,6 +346,47 @@
     box-shadow: 0 0 40px rgba(251, 191, 36, 0.3), 0 0 80px rgba(251, 191, 36, 0.1);
 }
 
+/* Privacy mode overlay */
+.privacy-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    z-index: 40;
+    transition: opacity 0.3s ease;
+}
+
+/* Hold-to-reveal progress bar */
+.hold-progress {
+    transition: width 0.8s linear;
+}
+
+/* Haptic feedback animation */
+@keyframes hapticPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.haptic-pulse {
+    animation: hapticPulse 0.1s ease-in-out;
+}
+
+/* Card reveal transition */
+.card-reveal-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Privacy blur effect */
+.privacy-blur {
+    filter: blur(4px);
+    transition: filter 0.3s ease;
+}
+
+.privacy-blur:focus-within,
+.privacy-blur:hover {
+    filter: blur(0);
+}
+
 @media (max-width: 640px) {
     .mobile-full {
         margin-inline: -1rem;
