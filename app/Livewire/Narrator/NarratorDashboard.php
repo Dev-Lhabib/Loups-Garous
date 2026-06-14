@@ -50,7 +50,7 @@ class NarratorDashboard extends Component
 
     public function advancePhase(string $toPhase)
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
             event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted phase transition'));
             $this->redirect(route('home'));
@@ -87,7 +87,7 @@ class NarratorDashboard extends Component
 
     public function forceResolve()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
             event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted force resolve'));
             $this->redirect(route('home'));
@@ -108,7 +108,7 @@ class NarratorDashboard extends Component
 
     public function littleGirlCaught()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
             event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted little girl caught'));
             $this->redirect(route('home'));
@@ -139,7 +139,7 @@ class NarratorDashboard extends Component
 
     public function newGame()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
             event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted new game'));
             $this->redirect(route('home'));
@@ -509,6 +509,12 @@ class NarratorDashboard extends Component
             $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
             $this->refreshNightFeed();
         }
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

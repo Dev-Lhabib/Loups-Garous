@@ -26,14 +26,17 @@ Route::get('/locale/{locale}', function (string $locale) {
     return redirect(route('home'));
 })->name('locale.switch');
 
-Route::get('/room/{room}/narrator', NarratorLobby::class)->name('lobby.narrator');
-Route::get('/room/{room}/player', PlayerLobby::class)->name('lobby.player');
-Route::get('/game/{room}/narrator', NarratorDashboard::class)->name('game.narrator');
-Route::get('/game/{room}/player', PlayerGameView::class)->name('game.player');
-
 Route::get('/create', CreateRoom::class)->name('rooms.create');
 Route::get('/join/{code?}', JoinRoom::class)->name('rooms.join');
 
 Route::post('/api/rooms', [LobbyController::class, 'create'])->name('api.rooms.create');
 Route::post('/api/rooms/join', [LobbyController::class, 'join'])->name('api.rooms.join');
-Route::post('/api/vote', [VoteController::class, 'submit'])->name('api.vote.submit');
+
+Route::middleware(\App\Http\Middleware\IdentifyPlayer::class)->group(function () {
+    Route::get('/room/{room}/narrator', NarratorLobby::class)->name('lobby.narrator');
+    Route::get('/room/{room}/player', PlayerLobby::class)->name('lobby.player');
+    Route::get('/game/{room}/narrator', NarratorDashboard::class)->name('game.narrator');
+    Route::get('/game/{room}/player', PlayerGameView::class)->name('game.player');
+
+    Route::post('/api/vote', [VoteController::class, 'submit'])->name('api.vote.submit');
+});

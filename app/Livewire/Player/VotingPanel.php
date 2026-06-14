@@ -60,7 +60,7 @@ class VotingPanel extends Component
 
     public function confirmVote()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -109,6 +109,12 @@ class VotingPanel extends Component
         return [
             "echo-private:room.{$this->room->id},PhaseChanged" => '$refresh',
         ];
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

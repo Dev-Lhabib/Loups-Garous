@@ -283,7 +283,7 @@ class NarratorLobby extends Component
             'totalAssigned' => $totalAssigned,
             'remaining' => $remaining,
             'recommendedSetup' => $recommendedSetup,
-            'explanations' => app(RoleConfigValidator::class)->getRecommendedSetupExplanation(app()->getLocale()),
+            'explanations' => app(RoleConfigValidator::class)->getRecommendedSetupExplanation(),
         ])->layout('layouts.app');
     }
 }

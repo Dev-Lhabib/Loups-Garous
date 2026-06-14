@@ -81,6 +81,16 @@ return [
         'all_connected' => 'Tous les joueurs sont connectés ✓',
         'werewolf_guide' => 'Guide des loups-garous',
         'werewolf_guide_note' => 'Ceci est une recommandation uniquement. Vous pouvez choisir n\'importe quel nombre de loups-garous.',
+        'setup_explanations' => [
+            'werewolf' => 'Les loups-garous créent une pression suffisante.',
+            'seer' => 'La Voyante fournit des informations cruciales.',
+            'witch' => 'La Sorcière apporte des décisions stratégiques.',
+            'hunter' => 'Le Chasseur crée des conséquences après élimination.',
+            'bodyguard' => 'Le Garde du corps protège les rôles clés.',
+            'fox' => 'Le Renard peut détecter les loups par groupe.',
+            'cupid' => 'Cupidon crée des alliances inattendues.',
+            'villager' => 'Les Villageois maintiennent l\'incertitude.',
+        ],
     ],
     'phase' => [
         'night' => 'Nuit',

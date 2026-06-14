@@ -255,7 +255,7 @@ class PlayerGameView extends Component
 
     public function submitDecree(): void
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -279,7 +279,7 @@ class PlayerGameView extends Component
 
     public function triggerSecondVote(): void
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -303,7 +303,7 @@ class PlayerGameView extends Component
 
     public function acceptSwap(): void
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -329,7 +329,7 @@ class PlayerGameView extends Component
 
     public function declineSwap(): void
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -351,6 +351,12 @@ class PlayerGameView extends Component
 
         $this->player = $this->player->fresh(['role']);
         $this->state = $this->state?->fresh();
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

@@ -16,8 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
             '/broadcasting/auth',
         ]);
 
-        $middleware->appendToGroup('web', \App\Http\Middleware\IdentifyPlayer::class);
-
         $middleware->appendToGroup('web', \App\Http\Middleware\SetLocale::class);
 
         $middleware->trustProxies(

@@ -248,33 +248,17 @@ class RoleConfigValidator
         return $setup;
     }
 
-    public function getRecommendedSetupExplanation(string $locale = 'en'): array
+    public function getRecommendedSetupExplanation(): array
     {
         return [
-            'werewolf' => $locale === 'fr'
-                ? 'Les loups-garous créent une pression suffisante.'
-                : 'Werewolves create enough pressure.',
-            'seer' => $locale === 'fr'
-                ? 'La Voyante fournit des informations cruciales.'
-                : 'Seer provides crucial information.',
-            'witch' => $locale === 'fr'
-                ? 'La Sorcière apporte des décisions stratégiques.'
-                : 'Witch brings strategic decisions.',
-            'hunter' => $locale === 'fr'
-                ? 'Le Chasseur crée des conséquences après élimination.'
-                : 'Hunter creates consequences after elimination.',
-            'bodyguard' => $locale === 'fr'
-                ? 'Le Garde du corps protège les rôles clés.'
-                : 'Bodyguard protects key roles.',
-            'fox' => $locale === 'fr'
-                ? 'Le Renard peut détecter les loups par groupe.'
-                : 'Fox can detect wolves in groups.',
-            'cupid' => $locale === 'fr'
-                ? 'Cupidon crée des alliances inattendues.'
-                : 'Cupid creates unexpected alliances.',
-            'villager' => $locale === 'fr'
-                ? 'Les Villageois maintiennent l\'incertitude.'
-                : 'Villagers maintain uncertainty.',
+            'werewolf' => __('ui.lobby.setup_explanations.werewolf'),
+            'seer' => __('ui.lobby.setup_explanations.seer'),
+            'witch' => __('ui.lobby.setup_explanations.witch'),
+            'hunter' => __('ui.lobby.setup_explanations.hunter'),
+            'bodyguard' => __('ui.lobby.setup_explanations.bodyguard'),
+            'fox' => __('ui.lobby.setup_explanations.fox'),
+            'cupid' => __('ui.lobby.setup_explanations.cupid'),
+            'villager' => __('ui.lobby.setup_explanations.villager'),
         ];
     }
 

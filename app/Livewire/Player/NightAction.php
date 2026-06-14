@@ -119,7 +119,7 @@ class NightAction extends Component
 
     public function confirmWolfHoundSide(): void
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
         $state = $this->room->gameState;
@@ -186,7 +186,7 @@ class NightAction extends Component
 
     public function confirmSubmit()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
             abort(403);
         }
@@ -216,6 +216,12 @@ class NightAction extends Component
             $remainingTypes = array_diff($this->getActionTypesForRole($role->key), $this->submittedActions);
             $this->wantsMoreActions = !empty($remainingTypes);
         }
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

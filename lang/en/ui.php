@@ -81,6 +81,16 @@ return [
         'all_connected' => 'All players connected ✓',
         'werewolf_guide' => 'Werewolf Guide',
         'werewolf_guide_note' => 'This is a recommendation only. You can choose any number of werewolves.',
+        'setup_explanations' => [
+            'werewolf' => 'Werewolves create enough pressure.',
+            'seer' => 'Seer provides crucial information.',
+            'witch' => 'Witch brings strategic decisions.',
+            'hunter' => 'Hunter creates consequences after elimination.',
+            'bodyguard' => 'Bodyguard protects key roles.',
+            'fox' => 'Fox can detect wolves in groups.',
+            'cupid' => 'Cupid creates unexpected alliances.',
+            'villager' => 'Villagers maintain uncertainty.',
+        ],
     ],
     'phase' => [
         'night' => 'Night',
