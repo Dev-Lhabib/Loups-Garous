@@ -23,7 +23,7 @@ class WerewolfKillPanel extends Component
 
     public function mount(Room $room, Player $player)
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $player->id) abort(403);
 
         $this->room = $room;
@@ -134,6 +134,12 @@ class WerewolfKillPanel extends Component
         return [
             "echo-private:room.{$this->room->id},PhaseChanged" => '$refresh',
         ];
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

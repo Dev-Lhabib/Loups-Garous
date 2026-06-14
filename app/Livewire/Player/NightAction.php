@@ -30,7 +30,7 @@ class NightAction extends Component
 
     public function mount(Room $room, Player $player)
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $player->id) {
             abort(403);
         }

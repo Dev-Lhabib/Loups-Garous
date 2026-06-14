@@ -20,7 +20,7 @@ class PlayerGameView extends Component
 
     public function mount(Room $room)
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
 
         if (!$requestPlayer || $requestPlayer->room_id !== $room->id || $requestPlayer->is_narrator) {
             if ($requestPlayer) {
@@ -372,6 +372,15 @@ class PlayerGameView extends Component
             $this->player->load('role');
         }
 
+        $playersAliveCount = Player::where('room_id', $this->room->id)
+            ->where('is_alive', true)
+            ->where('is_narrator', false)
+            ->count();
+
+        $playersTotalCount = Player::where('room_id', $this->room->id)
+            ->where('is_narrator', false)
+            ->count();
+
         $players = collect();
         if ($this->state->phase === 'finished') {
             $players = Player::where('room_id', $this->room->id)
@@ -384,6 +393,8 @@ class PlayerGameView extends Component
         return view('livewire.player.player-game-view', [
             'state' => $this->state,
             'players' => $players,
+            'playersAliveCount' => $playersAliveCount,
+            'playersTotalCount' => $playersTotalCount,
         ])->layout('layouts.app');
     }
 }

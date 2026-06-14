@@ -13,10 +13,16 @@ class SecretRoleCard extends Component
 
     public function mount()
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
             abort(403);
         }
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function reveal(): void

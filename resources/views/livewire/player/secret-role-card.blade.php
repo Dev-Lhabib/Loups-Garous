@@ -4,14 +4,14 @@
          revealed: false,
          holding: false,
          holdTimer: null,
-         startHold() {
-             this.holding = true;
-             this.holdTimer = setTimeout(() => {
-                 this.revealed = true";
-                 $wire.reveal();
-                 if (navigator.vibrate) navigator.vibrate(30);
-             }, 800);
-         },
+          startHold() {
+              this.holding = true;
+              this.holdTimer = setTimeout(() => {
+                  this.revealed = true;
+                  $wire.reveal();
+                  if (navigator.vibrate) navigator.vibrate(30);
+              }, 800);
+          },
          endHold() {
              this.holding = false;
              if (this.holdTimer) {

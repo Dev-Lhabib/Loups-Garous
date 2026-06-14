@@ -15,7 +15,7 @@ class PlayerLobby extends Component
 
     public function mount(Room $room)
     {
-        $p = request()->get('_player');
+        $p = $this->resolvePlayerFromSession();
 
         if (!$p || $p->room_id !== $room->id || $p->is_narrator) {
             if ($p) {
@@ -32,6 +32,12 @@ class PlayerLobby extends Component
             return;
         }
         $this->refreshPlayers();
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function refreshPlayers()

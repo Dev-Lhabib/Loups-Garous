@@ -1,4 +1,5 @@
 <div class="min-h-screen flex flex-col p-4 md:p-8"
+     wire:poll.2s
      x-data="{
          showOverlay: false,
          phaseLabel: '',
@@ -139,8 +140,8 @@
         <x-phase-header
             :phase="$state->phase"
             :round="$state->round"
-            :aliveCount="$state->phase !== 'finished' && $state->phase !== 'waiting' ? ($player->is_alive ? 1 : 0) : 0"
-            :totalCount="0"
+            :aliveCount="$state->phase !== 'finished' && $state->phase !== 'waiting' ? $playersAliveCount : 0"
+            :totalCount="$state->phase !== 'finished' && $state->phase !== 'waiting' ? $playersTotalCount : 0"
             :roomCode="$room->code"
             playerView="true"
         />
