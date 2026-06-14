@@ -85,7 +85,7 @@ class NightRolePanel extends Component
 
     public function openPanel(): void
     {
-        if ($this->panelOpen || $this->actionCompleted) return;
+        if ($this->panelOpen) return;
         $this->panelOpen = true;
     }
 
@@ -98,6 +98,7 @@ class NightRolePanel extends Component
 
     public function selectTarget(string $targetId): void
     {
+        if ($this->actionCompleted) return;
         $this->selectedTargetId = $targetId;
         $this->confirming = true;
     }
@@ -110,6 +111,8 @@ class NightRolePanel extends Component
 
     public function confirmAction(string $actionType = 'default'): void
     {
+        if ($this->actionCompleted) return;
+
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
@@ -139,6 +142,8 @@ class NightRolePanel extends Component
 
     public function witchUseSave(): void
     {
+        if ($this->actionCompleted) return;
+
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
@@ -161,6 +166,8 @@ class NightRolePanel extends Component
 
     public function witchUsePoison(): void
     {
+        if ($this->actionCompleted) return;
+
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
 
@@ -183,6 +190,8 @@ class NightRolePanel extends Component
 
     public function wolfSelectTarget(string $targetId): void
     {
+        if ($this->actionCompleted) return;
+
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night') return;
 
@@ -192,12 +201,14 @@ class NightRolePanel extends Component
         $state->save();
 
         $this->selectedTargetId = $targetId;
+        $this->confirming = true;
         $this->wolfSelections = $data['werewolf_kill_selections'];
         $this->checkWolfAgreement();
     }
 
     public function wolfConfirmKill(): void
     {
+        if ($this->actionCompleted) return;
         if (!$this->allAgree || !$this->agreedTargetId) return;
 
         $state = $this->room->gameState;
