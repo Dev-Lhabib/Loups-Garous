@@ -142,6 +142,7 @@ return [
         'roles_completed' => 'مستيقظ',
         'roles_pending' => 'بانتظار',
         'choose_carefully' => 'اختر بحكمة.',
+        'open_private_action' => 'فتح إجراء خاص',
     ],
     'action' => [
         'submitted' => 'تم تقديم الإجراء',
@@ -202,6 +203,7 @@ return [
         'idiot_revealed' => 'تم الكشف عن غبي القرية!',
         'faction_label' => 'الفصيل',
         'your_results' => 'نتائج ليلتك',
+        'no_results' => 'لا توجد نتائج لعرضها.',
     ],
     'game' => [
         'over' => 'انتهت اللعبة',
@@ -292,6 +294,11 @@ return [
         'faction' => 'الفصيل',
         'ability' => 'القدرة',
         'night_order' => 'ترتيب الاستيقاظ',
+        'secret_role' => 'دور سري',
+        'keep_private' => 'حافظ على خصوصية هاتفك 👀',
+        'night_phase' => 'مرحلة الليل',
+        'night_wait' => 'انتظر تعليمات الراوي',
+        'no_action_tonight' => 'ليس لديك أي عمل الليلة. انتظر الصباح.',
     ],
 
     'win' => [
@@ -319,5 +326,35 @@ return [
         'angel' => 'الملاك',
         'lovers' => 'العشاق',
         'neutral' => 'محايد',
+    ],
+    'werewolf' => [
+        'selections' => 'اختيارات الذئاب',
+        'all_agree' => 'جميع الذئاب متفقون!',
+        'confirm_kill' => 'تأكيد القتل',
+        'no_targets' => 'لا يوجد أهداف صالحة',
+    ],
+    'scapegoat' => [
+        'decree_title' => 'مرسومك الأخير',
+        'decree_prompt' => 'اختر اللاعبين الذين سيتم منعهم من التصويت في الجولة القادمة.',
+        'submit_decree' => 'تقديم المرسوم',
+    ],
+    'stuttering_judge' => [
+        'trigger_title' => 'التصويت الثاني',
+        'trigger_button' => 'تفعيل',
+        'confirm_trigger' => 'تفعيل تصويت ثاني؟ لا يمكن فعل هذا إلا مرة واحدة.',
+    ],
+    'devoted_servant' => [
+        'swap_title' => 'تبادل الهويات',
+        'swap_prompt' => 'تم إقصاء لاعب بالتصويت. هل تريد تبادل الأدوار معه؟',
+        'swap_target' => 'اللاعب المقصى',
+        'accept_swap' => 'قبول التبادل',
+        'decline_swap' => 'رفض',
+        'swap_accepted' => 'تم تبادل الأدوار!',
+        'swap_declined' => 'لقد رفضت التبادل.',
+    ],
+    'hunter' => [
+        'final_action_title' => 'الإجراء الأخير',
+        'final_action_subtitle' => 'اختر لاعباً لإقصائه.',
+        'confirm_shoot' => 'إقصاء هذا اللاعب؟',
     ],
 ];

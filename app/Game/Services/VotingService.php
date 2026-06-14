@@ -2,6 +2,7 @@
 
 namespace App\Game\Services;
 
+use App\Events\HunterActionPending;
 use App\Events\LoverDied;
 use App\Events\PlayerEliminated;
 use App\Events\VillageIdiotRevealed;
@@ -265,6 +266,16 @@ class VotingService
                 $winner = $this->winChecker->check($state);
                 if ($winner) return $winner;
 
+                $data = $state->data ?? [];
+                $data['pending_hunter_action'] = true;
+                $data['pending_hunter_id'] = $current->id;
+                $data['pending_hunter_target_id'] = null;
+                $data['pending_hunter_timeout'] = now()->addSeconds(30)->toIso8601String();
+                $state->data = $data;
+                $state->save();
+
+                event(new HunterActionPending($state, $current));
+
                 $bond = CoupleBond::where('game_state_id', $state->id)
                     ->where(function ($q) use ($current) {
                         $q->where('player_id', $current->id)
@@ -315,5 +326,28 @@ class VotingService
         }
 
         return null;
+    }
+
+    public function resolveHunterAction(GameState $state, ?string $targetId): ?\App\Game\Factions\FactionInterface
+    {
+        $data = $state->data ?? [];
+        if (empty($data['pending_hunter_action'])) return null;
+
+        $hunterId = $data['pending_hunter_id'] ?? null;
+        $data['pending_hunter_action'] = false;
+        $data['pending_hunter_target_id'] = $targetId;
+        unset($data['pending_hunter_id']);
+        unset($data['pending_hunter_timeout']);
+        $state->data = $data;
+        $state->save();
+
+        if ($targetId) {
+            $target = Player::find($targetId);
+            if ($target && $target->is_alive) {
+                return $this->applyDeathWithChain($state, $target);
+            }
+        }
+
+        return $this->winChecker->check($state);
     }
 }

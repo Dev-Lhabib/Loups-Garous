@@ -17,12 +17,14 @@ class DecoyHelper
         $type = $types[array_rand($types)];
         self::$lastType = $type;
 
-        $translations = $locale === 'fr'
-            ? lang("decoys.{$type}", [])
-            : lang("decoys.{$type}", []);
+        $translations = lang("decoys.{$type}", []);
+
+        if (empty($translations) || !is_array($translations)) {
+            $translations = lang("decoys.{$type}", []);
+        }
 
         if (empty($translations)) {
-            $translations = lang("decoys.{$type}", []);
+            return ['type' => $type, 'content' => '...'];
         }
 
         $content = $translations[array_rand($translations)];

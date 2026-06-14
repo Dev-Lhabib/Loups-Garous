@@ -17,6 +17,7 @@ class PlayerGameView extends Component
     public bool $ready = false;
     public array $scapegoatDecreeBanned = [];
     public bool $scapegoatDecreeSubmitted = false;
+    public bool $pendingHunterAction = false;
 
     public function mount(Room $room)
     {
@@ -57,6 +58,7 @@ class PlayerGameView extends Component
             "echo-private:player.{$this->player->id},RoleAssigned" => 'onRoleAssigned',
             "echo-private:player.{$this->player->id},SeerResultReady" => 'onSeerResult',
             "echo-private:player.{$this->player->id},FoxResultReady" => 'onFoxResult',
+            "echo-private:room.{$roomId},HunterActionPending" => 'onHunterActionPending',
             "echo-private:room.{$roomId},AllPlayersReady" => '$refresh',
             "echo-private:room.{$roomId},PlayerJoined" => '$refresh',
             "echo-private:room.{$roomId},PlayerLeft" => '$refresh',
@@ -105,11 +107,13 @@ class PlayerGameView extends Component
 
     public function hydrate(): void
     {
-        $room = $this->room ?? null;
-        if ($room) {
-            $fresh = Room::find($room->id);
-            if (!$fresh || !$fresh->gameState) {
-                $this->redirect(route('lobby.player', $room));
+        if (request()->hasHeader('X-Livewire')) {
+            $room = $this->room ?? null;
+            if ($room) {
+                $fresh = Room::find($room->id);
+                if (!$fresh || !$fresh->gameState) {
+                    $this->state = null;
+                }
             }
         }
     }
@@ -230,6 +234,51 @@ class PlayerGameView extends Component
     public function onGameReset()
     {
         $this->js("window.location.href = '" . route('lobby.player', $this->room) . "'");
+    }
+
+    public function onHunterActionPending()
+    {
+        $this->state = $this->room->gameState;
+        $data = $this->state->data ?? [];
+        $this->pendingHunterAction = !empty($data['pending_hunter_action'])
+            && ($data['pending_hunter_id'] ?? null) == $this->player->id;
+    }
+
+    public function submitHunterAction(string $targetId): void
+    {
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        if (empty($data['pending_hunter_action'])) return;
+        if (($data['pending_hunter_id'] ?? null) != $this->player->id) return;
+
+        $engine = app(\App\Game\Engine\GameEngine::class);
+        $engine->resolveHunterAction($state, $targetId);
+
+        $this->pendingHunterAction = false;
+        $this->state = $this->room->gameState;
+    }
+
+    public function resolveHunterTimeout(): void
+    {
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        if (empty($data['pending_hunter_action'])) return;
+
+        $timeout = $data['pending_hunter_timeout'] ?? null;
+        if ($timeout && now()->isBefore($timeout)) return;
+
+        $engine = app(\App\Game\Engine\GameEngine::class);
+        $engine->resolveHunterAction($state, null);
+
+        $this->pendingHunterAction = false;
+        $this->state = $this->room->gameState;
     }
 
     public function checkGameState(): void
@@ -364,13 +413,29 @@ class PlayerGameView extends Component
         $this->state = $this->room?->gameState;
 
         if (!$this->state) {
-            $this->redirect(route('lobby.player', $this->room));
-            return;
+            if (!request()->hasHeader('X-Livewire')) {
+                $this->redirect(route('lobby.player', $this->room));
+            }
+            $this->state = $this->room?->gameState;
+            if (!$this->state) {
+                return view('livewire.player.player-game-view', [
+                    'state' => null,
+                    'players' => collect(),
+                    'playersAliveCount' => 0,
+                    'playersTotalCount' => 0,
+                    'pendingHunterAction' => false,
+                    'hunterAlivePlayers' => collect(),
+                ])->layout('layouts.app');
+            }
         }
 
         if (!$this->player->relationLoaded('role')) {
             $this->player->load('role');
         }
+
+        $data = $this->state->data ?? [];
+        $this->pendingHunterAction = !empty($data['pending_hunter_action'])
+            && ($data['pending_hunter_id'] ?? null) == $this->player->id;
 
         $playersAliveCount = Player::where('room_id', $this->room->id)
             ->where('is_alive', true)
@@ -382,6 +447,7 @@ class PlayerGameView extends Component
             ->count();
 
         $players = collect();
+        $hunterAlivePlayers = collect();
         if ($this->state->phase === 'finished') {
             $players = Player::where('room_id', $this->room->id)
                 ->where('is_narrator', false)
@@ -390,11 +456,22 @@ class PlayerGameView extends Component
                 ->get();
         }
 
+        if ($this->pendingHunterAction) {
+            $hunterAlivePlayers = Player::where('room_id', $this->room->id)
+                ->where('is_alive', true)
+                ->where('is_narrator', false)
+                ->where('id', '!=', $this->player->id)
+                ->orderBy('nickname')
+                ->get();
+        }
+
         return view('livewire.player.player-game-view', [
             'state' => $this->state,
             'players' => $players,
             'playersAliveCount' => $playersAliveCount,
             'playersTotalCount' => $playersTotalCount,
+            'pendingHunterAction' => $this->pendingHunterAction,
+            'hunterAlivePlayers' => $hunterAlivePlayers,
         ])->layout('layouts.app');
     }
 }

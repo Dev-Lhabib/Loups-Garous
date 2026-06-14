@@ -127,6 +127,7 @@ return [
         'roles_completed' => 'Réveillé',
         'roles_pending' => 'En attente',
         'choose_carefully' => 'Choisissez avec soin.',
+        'open_private_action' => 'Ouvrir action privée',
     ],
     'action' => [
         'submitted' => 'Action soumise',
@@ -187,6 +188,7 @@ return [
         'idiot_revealed' => 'Idiot du village révélé !',
         'faction_label' => 'Faction',
         'your_results' => 'Vos résultats de la nuit',
+        'no_results' => 'Aucun résultat à afficher.',
     ],
     'game' => [
         'over' => 'Partie terminée',
@@ -283,6 +285,7 @@ return [
         'keep_private' => 'Gardez votre téléphone privé 👀',
         'night_phase' => 'Phase de Nuit',
         'night_wait' => 'Attendez les instructions du narrateur',
+        'no_action_tonight' => 'Vous n\'avez pas d\'action ce soir. Attendez le matin.',
     ],
 
     'win' => [
@@ -349,5 +352,10 @@ return [
         'decline_swap' => 'Refuser',
         'swap_accepted' => 'Vous avez échangé vos rôles !',
         'swap_declined' => 'Vous avez refusé l\'échange.',
+    ],
+    'hunter' => [
+        'final_action_title' => 'Action Finale',
+        'final_action_subtitle' => 'Choisissez un joueur à éliminer.',
+        'confirm_shoot' => 'Éliminer ce joueur ?',
     ],
 ];

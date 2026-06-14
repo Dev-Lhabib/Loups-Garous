@@ -116,4 +116,28 @@ class GameEngine
             ));
         });
     }
+
+    public function resolveHunterAction(GameState $state, ?string $targetId): void
+    {
+        $service = app(\App\Game\Services\VotingService::class);
+        $winner = $service->resolveHunterAction($state, $targetId);
+
+        $state = $state->fresh();
+
+        if (($state->data['winning_faction'] ?? null) !== null) {
+            return;
+        }
+
+        if ($winner) {
+            $this->endGame($state, $winner);
+            return;
+        }
+
+        $currentPhase = $state->phase;
+        if ($currentPhase === 'day') {
+            $this->phaseManager->transition($state, 'night');
+        } elseif ($currentPhase === 'voting') {
+            $this->phaseManager->transition($state, 'night');
+        }
+    }
 }

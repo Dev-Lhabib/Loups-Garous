@@ -27,6 +27,11 @@ class PhaseManager
             );
         }
 
+        $data = $state->data ?? [];
+        if (!empty($data['pending_hunter_action'])) {
+            return;
+        }
+
         if ($from === 'voting') {
             Vote::where('game_state_id', $state->id)->delete();
         }

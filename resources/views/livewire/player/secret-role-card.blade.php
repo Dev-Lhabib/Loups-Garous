@@ -1,5 +1,5 @@
 <div class="relative w-full max-w-[260px] sm:max-w-xs mx-auto cursor-pointer select-none"
-     style="perspective: 1000px;"
+     style="perspective: 1000px; touch-action: manipulation;"
      x-data="{
          revealed: false,
          holding: false,
@@ -12,21 +12,26 @@
                   if (navigator.vibrate) navigator.vibrate(30);
               }, 800);
           },
-         endHold() {
-             this.holding = false;
-             if (this.holdTimer) {
-                 clearTimeout(this.holdTimer);
-                 this.holdTimer = null;
-             }
+          endHold() {
+              this.holding = false;
+              if (this.holdTimer) {
+                  clearTimeout(this.holdTimer);
+                  this.holdTimer = null;
+              }
+              if (this.revealed) {
+                  this.revealed = false;
+                  $wire.hide();
+              }
+          },
+         closeRevealed() {
              this.revealed = false;
              $wire.hide();
          }
      }"
-     x-on:mousedown.prevent="startHold()"
-     x-on:mouseup="endHold()"
-     x-on:mouseleave="endHold()"
-     x-on:touchstart.prevent="startHold()"
-     x-on:touchend="endHold()"
+     x-on:pointerdown="startHold()"
+     x-on:pointerup="endHold()"
+     x-on:pointerleave="endHold()"
+     x-on:pointercancel="endHold()"
      x-on:touchcancel="endHold()">
 
     <div class="relative w-full aspect-[3/4] transition-transform duration-500"
@@ -49,6 +54,11 @@
 
         {{-- Revealed face - shows role details --}}
         <div class="absolute inset-0 backface-hidden rounded-xl card-revealed p-4 sm:p-5 flex flex-col items-center justify-center rotate-y-180">
+            {{-- Close button --}}
+            <button @click="closeRevealed()"
+                    class="absolute top-2 right-2 text-text-muted hover:text-text-primary text-lg leading-none px-2 py-1 rounded hover:bg-bg-elevated transition-colors z-10">
+                &times;
+            </button>
             <div class="flex-1 flex flex-col items-center justify-center space-y-2 sm:space-y-3">
                 @if($roleData)
                     <div class="text-4xl sm:text-5xl animate-floatSlow">

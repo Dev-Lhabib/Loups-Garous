@@ -127,6 +127,7 @@ return [
         'roles_completed' => 'Awake',
         'roles_pending' => 'Waiting',
         'choose_carefully' => 'Choose wisely.',
+        'open_private_action' => 'Open private action',
     ],
     'action' => [
         'submitted' => 'Action submitted',
@@ -187,6 +188,7 @@ return [
         'idiot_revealed' => 'Village Idiot revealed!',
         'faction_label' => 'Faction',
         'your_results' => 'Your Night Results',
+        'no_results' => 'No results to display.',
     ],
     'game' => [
         'over' => 'Game Over',
@@ -283,6 +285,7 @@ return [
         'keep_private' => 'Keep your phone private 👀',
         'night_phase' => 'Night Phase',
         'night_wait' => 'Wait for the narrator\'s instructions',
+        'no_action_tonight' => 'You have no action tonight. Wait for morning.',
     ],
 
     'win' => [
@@ -349,5 +352,10 @@ return [
         'decline_swap' => 'Decline',
         'swap_accepted' => 'You have swapped roles!',
         'swap_declined' => 'You declined the swap.',
+    ],
+    'hunter' => [
+        'final_action_title' => 'Final Action',
+        'final_action_subtitle' => 'Choose a player to eliminate.',
+        'confirm_shoot' => 'Eliminate this player?',
     ],
 ];

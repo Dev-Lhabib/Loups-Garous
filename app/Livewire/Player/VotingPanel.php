@@ -16,7 +16,6 @@ class VotingPanel extends Component
     public bool $submitted = false;
     public bool $confirming = false;
     public array $alivePlayers = [];
-    public array $liveTally = [];
 
     public function mount(Room $room, Player $player)
     {
@@ -48,8 +47,6 @@ class VotingPanel extends Component
         if ($existing) {
             $this->submitted = true;
         }
-
-        $this->refreshTally($state);
     }
 
     public function selectTarget(string $targetId)
@@ -77,7 +74,6 @@ class VotingPanel extends Component
         if ($result) {
             $this->submitted = true;
             $this->confirming = false;
-            $this->refreshTally($state);
         }
     }
 
@@ -85,23 +81,6 @@ class VotingPanel extends Component
     {
         $this->selectedTargetId = null;
         $this->confirming = false;
-    }
-
-    private function refreshTally($state)
-    {
-        $service = app(VotingService::class);
-        $tally = $service->tally($state);
-
-        $this->liveTally = [];
-        foreach ($tally as $targetId => $count) {
-            $p = Player::find($targetId);
-            if ($p) {
-                $this->liveTally[] = [
-                    'nickname' => $p->nickname,
-                    'count' => $count,
-                ];
-            }
-        }
     }
 
     public function getListeners()

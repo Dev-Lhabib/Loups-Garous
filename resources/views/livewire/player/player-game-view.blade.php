@@ -136,6 +136,14 @@
 
     <div class="flex-1 flex flex-col items-center justify-center space-y-6 w-full max-w-2xl mx-auto">
 
+        @if(!$state)
+            <div class="text-center py-12 space-y-4">
+                <div class="text-4xl animate-floatSlow">⏳</div>
+                <p class="text-text-muted">{{ __('ui.game.waiting') }}</p>
+            </div>
+            @return
+        @endif
+
         {{-- Phase Header --}}
         <x-phase-header
             :phase="$state->phase"
@@ -183,7 +191,6 @@
 
         @else
             {{-- Normal game --}}
-            <livewire:player.secret-role-card :player="$player" :wire:key="'role-'.$player->id" />
 
             @php $lastNightDeaths = $state->data['last_night_deaths'] ?? []; @endphp
 
@@ -203,64 +210,91 @@
             @php
                 $mySeerResult = $state->data['seer_results'][$player->id] ?? null;
                 $myFoxResult = $state->data['fox_results'][$player->id] ?? null;
+                $hasNightResults = $mySeerResult || $myFoxResult;
             @endphp
 
-            @if(($mySeerResult || $myFoxResult) && in_array($state->phase, ['day', 'voting']))
-                <div class="w-full max-w-md animate-fadeInUp"
-                     x-data="{ revealed: false }"
-                     x-on:mousedown="revealed = true"
-                     x-on:mouseup="revealed = false"
-                     x-on:mouseleave="revealed = false"
-                     x-on:touchstart="revealed = true"
-                     x-on:touchend="revealed = false">
-                    <div x-show="!revealed"
-                         class="glass-panel border border-border-default p-6 text-center cursor-pointer hover:border-accent-gold/40 transition-all duration-200">
-                        <p class="text-text-muted">{{ __('ui.game.discussion_time') }}</p>
-                    </div>
-                <div x-show="revealed" x-cloak
-                     class="glass-panel border border-accent-gold/60 p-4">
-                    <p class="text-text-muted text-xs uppercase tracking-widest mb-3">{{ __('ui.result.your_results') }}</p>
-                        @if($mySeerResult)
-                            <div class="flex justify-between items-start mb-2 p-2 bg-bg-surface/50 rounded">
-                                <div>
-                                    <p class="text-text-muted text-xs">{{ $mySeerResult['target_nickname'] }}</p>
-                                    <p class="text-text-primary text-sm">
-                                        {{ __('ui.result.faction_label') }}: <span class="text-accent-gold">{{ __("ui.factions.{$mySeerResult['faction']}") }}</span>
-                                    </p>
-                                </div>
-                                <button wire:click="dismissResult('seer')"
-                                        class="text-text-muted hover:text-accent-gold text-lg leading-none">&times;</button>
-                            </div>
-                        @endif
-                        @if($myFoxResult)
-                            <div class="flex justify-between items-start p-2 bg-bg-surface/50 rounded">
-                                <p class="text-text-primary text-sm">
-                                    {{ $myFoxResult['werewolf_found'] ? '🐺 '.__('ui.result.wolves_found') : '🦊 '.__('ui.result.no_wolves_found') }}
-                                </p>
-                                <button wire:click="dismissResult('fox')"
-                                        class="text-text-muted hover:text-accent-gold text-lg leading-none">&times;</button>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
-
             <div class="w-full max-w-md space-y-3">
-                @if(!$player->is_alive)
+                @if($pendingHunterAction)
+                    {{-- HUNTER FINAL ACTION --}}
+                    <div class="glass-panel border border-accent-gold/30 p-5 animate-fadeInUp"
+                         x-data="{ hunterTimer: 30 }"
+                         x-init="setInterval(() => { if (hunterTimer > 0) hunterTimer--; else $wire.resolveHunterTimeout(); }, 1000)">
+                        <div class="text-center space-y-3 mb-4">
+                            <div class="text-3xl animate-floatSlow">🏹</div>
+                            <p class="text-text-primary font-semibold">{{ __('ui.hunter.final_action_title') }}</p>
+                            <p class="text-text-muted text-xs">{{ __('ui.hunter.final_action_subtitle') }}</p>
+                            <p class="text-accent-gold font-mono text-sm" x-text="hunterTimer + 's'"></p>
+                        </div>
+                        <div class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
+                            @foreach($hunterAlivePlayers as $p)
+                                <button wire:click="submitHunterAction('{{ $p->id }}')"
+                                        wire:confirm="{{ __('ui.hunter.confirm_shoot') }}"
+                                        class="w-full px-4 py-3 bg-bg-surface/50 text-text-primary rounded-lg hover:bg-bg-elevated hover:border-accent-gold/30 border border-border-default transition-all duration-200 text-start flex items-center gap-3 group">
+                                    <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary group-hover:text-accent-gold transition-colors">
+                                        {{ strtoupper(substr($p['nickname'], 0, 1)) }}
+                                    </div>
+                                    <span class="font-medium">{{ $p['nickname'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                @elseif(!$player->is_alive)
                     <div class="glass-panel border border-border-default p-6 text-center animate-slideUpReveal">
                         <div class="text-5xl mb-3 animate-floatSlow">💀</div>
                         <p class="text-text-muted font-semibold text-lg">{{ __('ui.game.you_are_dead') }}</p>
                         <p class="text-text-muted/60 text-xs mt-2">{{ __('ui.game.you_are_dead_subtitle') }}</p>
                     </div>
                 @elseif($state->phase === 'night' && !$player->is_narrator)
-                    @php
-                        $isWerewolf = $player->role && in_array($player->role->key, ['werewolf', 'big_bad_wolf', 'accursed_wolf_father', 'white_werewolf']);
-                    @endphp
-                    @if($isWerewolf)
-                        <livewire:werewolves.werewolf-kill-panel :room="$room" :player="$player" :wire:key="'wolf-kill-'.$player->id" />
-                    @else
-                        <livewire:player.night-action :room="$room" :player="$player" :wire:key="'night-action-'.$player->id" />
-                    @endif
+                    <livewire:player.night-role-panel :room="$room" :player="$player" :wire:key="'night-panel-'.$player->id" />
+                @elseif($state->phase === 'day' && !$player->is_narrator)
+                    {{-- DAY PHASE: Identical for all players --}}
+                    <div class="w-full max-w-md animate-fadeInUp"
+                         x-data="{ revealed: false }"
+                         x-on:pointerdown="revealed = true"
+                         x-on:pointerup="revealed = false"
+                         x-on:pointerleave="revealed = false">
+                        {{-- Discussion panel: identical for everyone --}}
+                        <div class="glass-panel border border-border-default p-8 text-center cursor-pointer hover:border-accent-gold/40 transition-all duration-200">
+                            <div class="text-5xl mb-4 animate-floatSlow">☀️</div>
+                            <p class="text-text-primary font-medium text-lg">{{ __('ui.game.discussion_time') }}</p>
+                            <p class="text-text-muted text-sm mt-2">{{ __('ui.game.discussion_subtitle') }}</p>
+                            <p class="text-text-muted/40 text-xs mt-3">{{ __('ui.role.hold_to_reveal') }}</p>
+                        </div>
+                        {{-- Hold-to-reveal results: same position for everyone, only content differs --}}
+                        <div x-show="revealed" x-cloak
+                             x-transition:enter="transition-all duration-300"
+                             x-transition:enter-start="opacity-0 scale-95"
+                             x-transition:enter-end="opacity-100 scale-100"
+                             class="glass-panel border border-accent-gold/60 p-4 mt-2">
+                            @if($hasNightResults)
+                                <p class="text-text-muted text-xs uppercase tracking-widest mb-3">{{ __('ui.result.your_results') }}</p>
+                                @if($mySeerResult)
+                                    <div class="flex justify-between items-start mb-2 p-2 bg-bg-surface/50 rounded">
+                                        <div>
+                                            <p class="text-text-muted text-xs">{{ $mySeerResult['target_nickname'] }}</p>
+                                            <p class="text-text-primary text-sm">
+                                                {{ __('ui.result.faction_label') }}: <span class="text-accent-gold">{{ __("ui.factions.{$mySeerResult['faction']}") }}</span>
+                                            </p>
+                                        </div>
+                                        <button wire:click="dismissResult('seer')"
+                                                class="text-text-muted hover:text-accent-gold text-lg leading-none">&times;</button>
+                                    </div>
+                                @endif
+                                @if($myFoxResult)
+                                    <div class="flex justify-between items-start p-2 bg-bg-surface/50 rounded">
+                                        <p class="text-text-primary text-sm">
+                                            {{ $myFoxResult['werewolf_found'] ? '🐺 '.__('ui.result.wolves_found') : '🦊 '.__('ui.result.no_wolves_found') }}
+                                        </p>
+                                        <button wire:click="dismissResult('fox')"
+                                                class="text-text-muted hover:text-accent-gold text-lg leading-none">&times;</button>
+                                    </div>
+                                @endif
+                            @else
+                                <p class="text-text-muted text-sm">{{ __('ui.result.no_results') }}</p>
+                            @endif
+                        </div>
+                    </div>
                 @elseif($state->phase === 'voting' && !$player->is_narrator)
                     @php
                         $data = $state->data ?? [];
@@ -287,9 +321,6 @@
                                     <div class="bg-bg-surface/50 border border-border-default rounded-lg p-3 text-center">
                                         <p class="text-text-muted text-xs">{{ __('ui.devoted_servant.swap_target') }}</p>
                                         <p class="text-text-primary font-semibold mt-1">{{ $swapTarget->nickname }}</p>
-                                        @if($swapTarget->role)
-                                            <p class="text-accent-gold text-sm mt-1">{{ $swapTarget->role->key }}</p>
-                                        @endif
                                     </div>
                                 @endif
                                 <div class="flex gap-3">
@@ -362,12 +393,6 @@
                             </div>
                         @endif
                     @endif
-                @elseif($state->phase === 'day' && !$mySeerResult && !$myFoxResult)
-                    <div class="glass-panel border border-border-default p-8 text-center animate-slideUpReveal">
-                        <div class="text-5xl mb-4 animate-floatSlow">☀️</div>
-                        <p class="text-text-primary font-medium text-lg">{{ __('ui.game.discussion_time') }}</p>
-                        <p class="text-text-muted text-sm mt-2">{{ __('ui.game.discussion_subtitle') }}</p>
-                    </div>
                 @endif
             </div>
         @endif
