@@ -29,13 +29,13 @@ class NightRolePanel extends Component
 
     public function mount(Room $room, Player $player): void
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
-            abort(403);
-        }
-
         $this->room = $room;
         $this->player = $player->fresh(['role']);
+
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
+            return;
+        }
 
         if (!$this->player->is_alive || $this->player->is_narrator) return;
 
@@ -307,6 +307,6 @@ class NightRolePanel extends Component
             'wolfSelections' => $this->wolfSelections,
             'allAgree' => $this->allAgree,
             'agreedTargetId' => $this->agreedTargetId,
-        ])->layout('layouts.app');
+        ]);
     }
 }

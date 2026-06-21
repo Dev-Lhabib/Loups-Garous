@@ -28,6 +28,9 @@ class VotingService
         if ($voter->voting_banned) abort(403);
         if ($state->phase !== 'voting') abort(403);
 
+        $stateData = $state->data ?? [];
+        if (!empty($stateData['paused'])) abort(403, 'Game is paused');
+
         $data = $state->data ?? [];
         $voteBanList = $data['vote_ban_next_round'] ?? [];
         if (in_array($voter->id, $voteBanList)) abort(403);

@@ -3,6 +3,7 @@
 namespace App\Livewire\Player;
 
 use App\Events\SuspiciousAccessAttempt;
+use App\Game\Services\ProgressTracker;
 use App\Game\Services\VotingService;
 use App\Models\GameState;
 use App\Models\Player;
@@ -15,9 +16,11 @@ class PlayerGameView extends Component
     public Player $player;
     public ?GameState $state = null;
     public bool $ready = false;
+    public bool $paused = false;
     public array $scapegoatDecreeBanned = [];
     public bool $scapegoatDecreeSubmitted = false;
     public bool $pendingHunterAction = false;
+    public ?int $timerRemaining = null;
 
     public function mount(Room $room)
     {
@@ -40,8 +43,10 @@ class PlayerGameView extends Component
         $this->player = $requestPlayer->fresh(['role']);
         $this->state = $room->gameState;
 
-        $readyPlayers = $this->state?->data['players_ready'] ?? [];
-        $this->ready = in_array($this->player->id, $readyPlayers);
+        $data = $this->state?->data ?? [];
+        $this->ready = in_array($this->player->id, $data['players_ready'] ?? []);
+        $this->paused = !empty($data['paused']);
+        $this->refreshTimer();
     }
 
     public function getListeners()
@@ -62,6 +67,7 @@ class PlayerGameView extends Component
             "echo-private:room.{$roomId},AllPlayersReady" => '$refresh',
             "echo-private:room.{$roomId},PlayerJoined" => '$refresh',
             "echo-private:room.{$roomId},PlayerLeft" => '$refresh',
+            "echo-private:room.{$roomId},GamePaused" => 'onGamePaused',
         ];
     }
 
@@ -79,29 +85,29 @@ class PlayerGameView extends Component
 
     public function readyUp()
     {
-        if (!$this->state || $this->state->phase !== 'waiting') return;
+        if ($this->paused) return;
+        if (!$this->state) return;
 
-        $data = $this->state->data ?? [];
-        $ready = $data['players_ready'] ?? [];
-
-        if (in_array($this->player->id, $ready)) return;
-
-        $ready[] = $this->player->id;
-        $data['players_ready'] = $ready;
-        $this->state->data = $data;
-        $this->state->save();
-
-        $this->ready = true;
-
-        $aliveCount = Player::where('room_id', $this->room->id)
-            ->where('is_alive', true)
-            ->where('is_narrator', false)
-            ->count();
-
-        if (count($ready) >= $aliveCount) {
-            event(new \App\Events\AllPlayersReady($this->room));
+        if ($this->ready) {
+            $tracker = app(ProgressTracker::class);
+            $tracker->markNotReady($this->player, $this->state);
+            $this->ready = false;
+            $this->state = $this->state->fresh();
+            return;
         }
 
+        $phase = $this->state->phase;
+        if ($phase === 'waiting' && !$this->player->role) {
+            return;
+        }
+
+        if ($phase === 'night' && !$this->player->is_alive) {
+            return;
+        }
+
+        $tracker = app(ProgressTracker::class);
+        $tracker->markReady($this->player, $this->state, $phase);
+        $this->ready = true;
         $this->state = $this->state->fresh();
     }
 
@@ -144,39 +150,29 @@ class PlayerGameView extends Component
         }
         $this->state = $gs->fresh();
         $this->player = $this->player->fresh(['role']);
+        $this->ready = false;
+        $this->refreshPaused();
+        $this->refreshTimer();
+
         $phase = $this->state->phase;
-        $labels = [
-            'waiting' => __('ui.phase.waiting'),
-            'night' => __('ui.phase.night'),
-            'day' => __('ui.phase.day'),
-            'voting' => __('ui.phase.voting'),
-            'finished' => __('ui.phase.finished'),
-        ];
-        $subtitles = [
-            'night' => __('ui.phase.night_subtitle'),
-            'day' => __('ui.phase.day_subtitle'),
-            'voting' => __('ui.phase.voting_subtitle'),
-            'finished' => __('ui.phase.finished_subtitle'),
-        ];
-        $icons = [
-            'night' => '🌙',
-            'day' => '☀️',
-            'voting' => '🗳️',
-            'finished' => '🏆',
-        ];
-        $classes = [
-            'waiting' => 'phase-overlay phase-overlay-waiting',
-            'night' => 'phase-overlay phase-overlay-night',
-            'day' => 'phase-overlay phase-overlay-day',
-            'voting' => 'phase-overlay phase-overlay-voting',
-            'finished' => 'phase-overlay phase-overlay-finished',
-        ];
         $this->dispatch('transition-phase',
-            label: $labels[$phase] ?? '',
-            subtitle: $subtitles[$phase] ?? '',
-            icon: $icons[$phase] ?? '',
-            class: $classes[$phase] ?? '',
+            label: __("ui.phase.{$phase}"),
+            subtitle: __("ui.phase.{$phase}_subtitle"),
+            icon: match ($phase) { 'night' => '🌙', 'day' => '☀️', 'voting' => '🗳️', 'finished' => '🏆', default => '' },
+            class: match ($phase) {
+                'night' => 'phase-overlay phase-overlay-night',
+                'day' => 'phase-overlay phase-overlay-day',
+                'voting' => 'phase-overlay phase-overlay-voting',
+                'finished' => 'phase-overlay phase-overlay-finished',
+                default => 'phase-overlay phase-overlay-waiting',
+            },
         );
+    }
+
+    public function onGamePaused(array $payload)
+    {
+        $this->paused = !empty($payload['paused']);
+        $this->state = $this->room?->gameState;
     }
 
     public function dismissResult(string $type): void
@@ -402,6 +398,36 @@ class PlayerGameView extends Component
         $this->state = $this->state?->fresh();
     }
 
+    private function refreshPaused(): void
+    {
+        $data = $this->state?->data ?? [];
+        $this->paused = !empty($data['paused']);
+    }
+
+    private function refreshTimer(): void
+    {
+        if (!$this->state) return;
+        $phase = $this->state->phase;
+        if (in_array($phase, ['waiting', 'finished'], true)) {
+            $this->timerRemaining = null;
+            return;
+        }
+
+        $data = $this->state->data ?? [];
+        $timerKey = "{$phase}_timer_started_at";
+        $configKey = "{$phase}_timer_config";
+
+        $startedAt = $data[$timerKey] ?? null;
+        $configSeconds = $data[$configKey] ?? 0;
+
+        if ($startedAt && $configSeconds > 0) {
+            $elapsed = now()->diffInSeconds(\Carbon\Carbon::parse($startedAt));
+            $this->timerRemaining = max(0, $configSeconds - $elapsed);
+        } else {
+            $this->timerRemaining = null;
+        }
+    }
+
     private function resolvePlayerFromSession(): ?Player
     {
         $token = request()->cookie('session_token');
@@ -425,6 +451,15 @@ class PlayerGameView extends Component
                     'playersTotalCount' => 0,
                     'pendingHunterAction' => false,
                     'hunterAlivePlayers' => collect(),
+                    'paused' => false,
+                    'timerRemaining' => null,
+                    'ready' => false,
+                    'isSequentialNight' => false,
+                    'activeNightRole' => null,
+                    'canActNow' => true,
+                    'nightProgress' => [],
+                    'nightProgressTotal' => 0,
+                    'nightProgressDone' => 0,
                 ])->layout('layouts.app');
             }
         }
@@ -436,6 +471,9 @@ class PlayerGameView extends Component
         $data = $this->state->data ?? [];
         $this->pendingHunterAction = !empty($data['pending_hunter_action'])
             && ($data['pending_hunter_id'] ?? null) == $this->player->id;
+        $this->paused = !empty($data['paused']);
+        $this->refreshTimer();
+        $this->ready = in_array($this->player->id, $data['players_ready'] ?? []);
 
         $playersAliveCount = Player::where('room_id', $this->room->id)
             ->where('is_alive', true)
@@ -465,6 +503,26 @@ class PlayerGameView extends Component
                 ->get();
         }
 
+        $isSequentialNight = ($data['night_mode'] ?? 'parallel') === 'sequential' && $this->state->phase === 'night';
+        $activeNightRole = $data['active_night_role'] ?? null;
+
+        $canActNow = true;
+        if ($isSequentialNight && $this->player->role && $this->player->role->night_order !== null) {
+            $canActNow = $activeNightRole === $this->player->role->key;
+        }
+
+        $nightProgress = [];
+        $nightProgressTotal = 0;
+        $nightProgressDone = 0;
+        if ($this->state->phase === 'night') {
+            $progressTracker = app(ProgressTracker::class);
+            $nightProgress = $progressTracker->getNightActionProgress($this->state);
+            foreach ($nightProgress as $rp) {
+                $nightProgressTotal += $rp['total'];
+                $nightProgressDone += $rp['done'];
+            }
+        }
+
         return view('livewire.player.player-game-view', [
             'state' => $this->state,
             'players' => $players,
@@ -472,6 +530,15 @@ class PlayerGameView extends Component
             'playersTotalCount' => $playersTotalCount,
             'pendingHunterAction' => $this->pendingHunterAction,
             'hunterAlivePlayers' => $hunterAlivePlayers,
+            'paused' => $this->paused,
+            'timerRemaining' => $this->timerRemaining,
+            'ready' => $this->ready,
+            'isSequentialNight' => $isSequentialNight,
+            'activeNightRole' => $activeNightRole,
+            'canActNow' => $canActNow,
+            'nightProgress' => $nightProgress,
+            'nightProgressTotal' => $nightProgressTotal,
+            'nightProgressDone' => $nightProgressDone,
         ])->layout('layouts.app');
     }
 }

@@ -25,18 +25,25 @@ class NightAction extends Component
     public array $decoy = [];
     public bool $panelRevealed = false;
     public ?array $roleData = null;
+    public bool $canActNow = true;
+    public bool $isSequential = false;
+    public ?string $activeNightRole = null;
+    public bool $waitingForRole = false;
 
     private array $multiActionRoles = ['witch'];
 
-    public function mount(Room $room, Player $player)
+    public function mount(Room $room, Player $player, bool $canActNow = true, bool $isSequential = false, ?string $activeNightRole = null)
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
-            abort(403);
-        }
-
         $this->room = $room;
         $this->player = $player->fresh(['role']);
+
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
+            return;
+        }
+        $this->canActNow = $canActNow;
+        $this->isSequential = $isSequential;
+        $this->activeNightRole = $activeNightRole;
 
         if (!$this->player->is_alive || $this->player->is_narrator) return;
 
@@ -46,6 +53,13 @@ class NightAction extends Component
         $role = $this->player->role;
 
         $this->hasNightAction = $role && $role->night_order !== null;
+
+        if ($isSequential && $this->hasNightAction) {
+            $this->waitingForRole = $activeNightRole !== $role->key;
+            if ($this->waitingForRole) {
+                return;
+            }
+        }
 
         if (!$this->hasNightAction) {
             $this->decoy = \App\Helpers\DecoyHelper::random(app()->getLocale());
@@ -232,6 +246,24 @@ class NightAction extends Component
 
         $role = $this->player->role;
 
+        $state = $this->room->gameState;
+        $isSequential = $state && ($state->data['night_mode'] ?? 'parallel') === 'sequential';
+        $activeNightRole = $state ? ($state->data['active_night_role'] ?? null) : null;
+
+        if ($isSequential && $this->hasNightAction && $activeNightRole !== $role?->key) {
+            return view('livewire.player.night-action', [
+                'role' => $role,
+                'hasNightAction' => $this->hasNightAction,
+                'actionTypes' => [],
+                'isMultiAction' => false,
+                'decoy' => [],
+                'panelRevealed' => false,
+                'roleData' => null,
+                'waitingForRole' => true,
+                'activeNightRole' => $activeNightRole,
+            ]);
+        }
+
         return view('livewire.player.night-action', [
             'role' => $role,
             'hasNightAction' => $this->hasNightAction,
@@ -240,6 +272,8 @@ class NightAction extends Component
             'decoy' => $this->decoy,
             'panelRevealed' => $this->panelRevealed,
             'roleData' => $this->roleData,
+            'waitingForRole' => false,
+            'activeNightRole' => null,
         ]);
     }
 }

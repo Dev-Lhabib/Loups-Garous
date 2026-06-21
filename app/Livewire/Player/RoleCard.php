@@ -14,7 +14,7 @@ class RoleCard extends Component
     {
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
-            abort(403);
+            return;
         }
     }
 

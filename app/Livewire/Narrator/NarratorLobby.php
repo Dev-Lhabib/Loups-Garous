@@ -34,7 +34,7 @@ class NarratorLobby extends Component
 
     public function mount(Room $room)
     {
-        $player = request()->get('_player');
+        $player = $this->resolvePlayerFromSession();
 
         if (!$player || !$player->is_narrator || $player->room_id !== $room->id) {
             if ($player) {
@@ -259,6 +259,12 @@ class NarratorLobby extends Component
             "echo-private:room.{$this->room->id},PlayerJoined" => 'refreshPlayerCount',
             "echo-private:room.{$this->room->id},PlayerLeft" => '$refresh',
         ];
+    }
+
+    private function resolvePlayerFromSession(): ?Player
+    {
+        $token = request()->cookie('session_token');
+        return $token ? Player::where('session_token', $token)->first() : null;
     }
 
     public function render()

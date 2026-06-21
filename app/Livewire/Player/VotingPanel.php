@@ -19,13 +19,13 @@ class VotingPanel extends Component
 
     public function mount(Room $room, Player $player)
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
-            abort(403);
-        }
-
         $this->room = $room;
         $this->player = $player;
+
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
+            return;
+        }
 
         if (!$player->is_alive || $player->is_narrator) return;
 
@@ -105,8 +105,18 @@ class VotingPanel extends Component
             return '<div></div>';
         }
 
+        $totalVoters = \App\Models\Player::where('room_id', $this->room->id)
+            ->where('is_alive', true)
+            ->where('is_narrator', false)
+            ->where('voting_banned', false)
+            ->count();
+
+        $voteCount = \App\Models\Vote::where('game_state_id', $state->id)->count();
+
         return view('livewire.player.voting-panel', [
             'banned' => $banned,
+            'totalVoters' => $totalVoters,
+            'voteCount' => $voteCount,
         ]);
     }
 }

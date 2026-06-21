@@ -1,11 +1,29 @@
 <div class="glass-panel border border-accent-gold/30 p-5 w-full animate-slideUpReveal">
+    {{-- Voting progress bar --}}
+    @if($totalVoters > 0)
+        <div class="mb-3">
+            <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-text-muted">{{ __('ui.vote.ongoing') }}</span>
+                <span class="font-mono font-semibold {{ $voteCount >= $totalVoters ? 'text-accent-green' : 'text-accent-gold' }}">
+                    {{ $voteCount }}/{{ $totalVoters }}
+                </span>
+            </div>
+            <div class="h-1.5 bg-bg-surface rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500 ease-out
+                            {{ $voteCount >= $totalVoters ? 'bg-accent-green' : 'bg-accent-gold' }}"
+                     style="width: {{ ($voteCount / $totalVoters) * 100 }}%">
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if($banned)
         <div class="text-center py-6">
             <div class="text-3xl mb-2 animate-floatSlow">🚫</div>
             <p class="text-text-muted font-semibold">{{ __('ui.vote.banned') }}</p>
         </div>
     @elseif($submitted)
-        <div class="text-center py-6 space-y-4">
+        <div class="text-center py-4 space-y-4">
             <div class="text-3xl animate-floatSlow">🗳️</div>
             <p class="text-text-muted font-medium">{{ __('ui.vote.submitted') }}</p>
             <div class="flex justify-center gap-2">

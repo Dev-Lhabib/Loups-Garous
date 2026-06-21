@@ -11,6 +11,7 @@
          nightEliminated: null,
          nightTimer: null,
          showResults: false,
+         paused: {{ $paused ? 'true' : 'false' }},
      }"
      @transition-phase.window="
          showOverlay = true;
@@ -30,10 +31,11 @@
          if (nightTimer) clearTimeout(nightTimer);
          nightTimer = setTimeout(() => { nightEliminated = null; }, 10000);
      "
+     @game-paused.window="paused = $event.detail.paused"
 >
-    {{-- Phase transition overlay - cinematic banner --}}
+    {{-- Phase transition overlay --}}
     <div x-show="showOverlay"
-         class="fixed inset-0 z-50 flex items-center justify-center"
+         class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
          :class="phaseClass"
          x-transition:enter="transition-all duration-700"
          x-transition:enter-start="opacity-0"
@@ -42,15 +44,28 @@
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"
          x-cloak>
-        <div class="text-center space-y-4">
-            <div class="text-6xl md:text-7xl animate-floatSlow" x-text="phaseIcon"></div>
-            <h2 class="text-4xl md:text-6xl font-serif font-bold text-text-primary animate-fadeInScale" x-text="phaseLabel"></h2>
-            <p x-show="phaseSubtitle" class="text-lg md:text-xl text-text-secondary animate-slideUpReveal" style="animation-delay: 300ms;" x-text="phaseSubtitle"></p>
-            <div class="flex justify-center gap-2 mt-4">
-                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-200"></span>
-                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-400"></span>
-                <span class="w-2 h-2 rounded-full bg-accent-gold animate-pulse animation-delay-600"></span>
-            </div>
+        {{-- Animated gradient sweep --}}
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-white/[0.03] to-transparent -translate-y-full"
+             x-show="showOverlay"
+             x-transition:enter="transition-all duration-1000"
+             x-transition:enter-start="-translate-y-full"
+             x-transition:enter-end="translate-y-full"
+             style="transition-delay: 200ms;">
+        </div>
+        <div class="text-center space-y-4 relative z-10">
+            <div class="text-6xl md:text-7xl animate-floatSlow" x-text="phaseIcon" style="animation-duration: 1s;"></div>
+            <h2 class="text-4xl md:text-6xl font-serif font-bold text-text-primary animate-fadeInScale" style="animation-delay: 150ms;" x-text="phaseLabel"></h2>
+            <p x-show="phaseSubtitle" class="text-lg md:text-xl text-text-secondary animate-slideUpReveal" style="animation-delay: 350ms;" x-text="phaseSubtitle"></p>
+        </div>
+    </div>
+
+    {{-- Pause overlay --}}
+    <div x-show="paused" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="text-center space-y-4 animate-fadeInScale">
+            <div class="text-6xl animate-pulse">⏸️</div>
+            <h2 class="text-3xl font-serif font-bold text-accent-gold">{{ __('ui.narrator.game_paused') }}</h2>
+            <p class="text-text-muted">{{ __('ui.narrator.game_paused_player_hint') }}</p>
         </div>
     </div>
 
@@ -134,6 +149,35 @@
         </p>
     </div>
 
+    {{-- Timer display --}}
+    @if($timerRemaining !== null && !$paused)
+        @php
+            $timerSeconds = match($state?->phase) {
+                'day' => $state->data['day_timer_config'] ?? 180,
+                'voting' => $state->data['voting_timer_config'] ?? 60,
+                'night' => $state->data['night_timer_config'] ?? 120,
+                default => 180,
+            };
+            $timerPct = $timerSeconds > 0 ? ($timerRemaining / $timerSeconds) * 100 : 0;
+        @endphp
+        <div class="fixed top-4 right-4 z-30 glass-panel border border-border-default rounded-lg px-3 py-2 flex items-center gap-2">
+            <span class="text-xs">⏱️</span>
+            <span class="font-mono text-sm {{ $timerRemaining <= 30 ? 'text-accent-red font-bold animate-pulse' : 'text-accent-gold' }}">
+                {{ gmdate('i:s', $timerRemaining) }}
+            </span>
+        </div>
+        @if(in_array($state?->phase, ['day', 'voting']))
+            <div class="w-full max-w-md mx-auto mb-2">
+                <div class="h-1 bg-bg-surface rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-1000 ease-linear
+                                {{ $timerRemaining <= 30 ? 'bg-accent-red' : 'bg-accent-gold' }}"
+                         style="width: {{ max(0, $timerPct) }}%">
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endif
+
     <div class="flex-1 flex flex-col items-center justify-center space-y-6 w-full max-w-2xl mx-auto">
 
         @if(!$state)
@@ -188,6 +232,9 @@
                     :currentPlayerId="$player->id"
                 />
             </div>
+
+        @elseif($paused)
+            {{-- Paused -- do nothing --}}
 
         @else
             {{-- Normal game --}}
@@ -245,23 +292,101 @@
                         <p class="text-text-muted font-semibold text-lg">{{ __('ui.game.you_are_dead') }}</p>
                         <p class="text-text-muted/60 text-xs mt-2">{{ __('ui.game.you_are_dead_subtitle') }}</p>
                     </div>
+
                 @elseif($state->phase === 'night' && !$player->is_narrator)
-                    <livewire:player.night-role-panel :room="$room" :player="$player" :wire:key="'night-panel-'.$player->id" />
+                    {{-- Night progress bar --}}
+                    @if($nightProgressTotal > 0)
+                        <div class="w-full max-w-md glass-panel border border-border-default p-3 animate-fadeInUp">
+                            <div class="flex items-center justify-between text-xs mb-2">
+                                <span class="text-text-muted">{{ __('ui.night.night_progress') }}</span>
+                                <span class="font-mono font-semibold {{ $nightProgressDone >= $nightProgressTotal ? 'text-accent-green' : 'text-accent-gold' }}">
+                                    {{ $nightProgressDone }}/{{ $nightProgressTotal }}
+                                </span>
+                            </div>
+                            <div class="h-1.5 bg-bg-surface rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500 ease-out
+                                            {{ $nightProgressDone >= $nightProgressTotal ? 'bg-accent-green' : 'bg-accent-gold' }}"
+                                     style="width: {{ ($nightProgressDone / $nightProgressTotal) * 100 }}%">
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                                @foreach($nightProgress as $roleKey => $rp)
+                                    @php
+                                        $emoji = match($roleKey) {
+                                            'werewolf' => '🐺', 'big_bad_wolf' => '🐺', 'accursed_wolf_father' => '🐺',
+                                            'white_werewolf' => '🐺', 'bodyguard' => '🛡️', 'seer' => '🔮',
+                                            'witch' => '🧪', 'pied_piper' => '🎵', 'fox' => '🦊',
+                                            'cupid' => '💘', 'wolf_hound' => '🐕', default => '❓',
+                                        };
+                                    @endphp
+                                    <span class="text-[10px] flex items-center gap-1 {{ $rp['completed'] ? 'text-accent-green' : 'text-text-muted' }}">
+                                        <span>{{ $emoji }}</span>
+                                        <span>{{ $rp['done'] }}/{{ $rp['total'] }}</span>
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Sequential night mode: show "Stay asleep" if not active --}}
+                    @if($isSequentialNight && $player->role && $player->role->night_order !== null && $activeNightRole !== $player->role->key)
+                        <div class="glass-panel border border-border-default p-8 text-center animate-fadeInUp">
+                            <div class="text-5xl mb-4 animate-floatSlow">😴</div>
+                            <p class="text-text-primary font-medium text-lg">{{ __('ui.game.stay_asleep') }}</p>
+                            <p class="text-text-muted text-sm mt-2">{{ __('ui.game.waiting_night_subtitle') }}</p>
+                        </div>
+                    @else
+                        <livewire:player.night-role-panel :room="$room" :player="$player" :wire:key="'night-panel-'.$player->id" />
+                    @endif
+
                 @elseif($state->phase === 'day' && !$player->is_narrator)
-                    {{-- DAY PHASE: Identical for all players --}}
+                    {{-- DAY PHASE: Living players list --}}
+                    @php
+                        $dayAlivePlayers = \App\Models\Player::where('room_id', $room->id)
+                            ->where('is_alive', true)
+                            ->where('is_narrator', false)
+                            ->orderBy('nickname')
+                            ->get();
+                        $dayDeadPlayers = \App\Models\Player::where('room_id', $room->id)
+                            ->where('is_alive', false)
+                            ->where('is_narrator', false)
+                            ->orderBy('nickname')
+                            ->get();
+                    @endphp
+                    <div class="w-full max-w-md glass-panel border border-border-default p-3 animate-fadeInUp">
+                        <div class="flex items-center justify-between text-xs mb-2">
+                            <span class="text-text-muted font-semibold uppercase tracking-wider">{{ __('ui.game.survivors') }}</span>
+                            <span class="text-accent-green font-mono text-xs font-bold">{{ $playersAliveCount }}/{{ $playersTotalCount }}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach($dayAlivePlayers as $dap)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-accent-green/5 border border-accent-green/20 rounded-full text-[10px] text-text-primary">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-accent-green"></span>
+                                    {{ $dap->nickname }}
+                                </span>
+                            @endforeach
+                            @if($dayDeadPlayers->isNotEmpty())
+                                <div class="w-full my-1 border-t border-border-default/50"></div>
+                                @foreach($dayDeadPlayers as $ddp)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-accent-red/5 border border-accent-red/10 rounded-full text-[10px] text-text-muted line-through">
+                                        💀 {{ $ddp->nickname }}
+                                    </span>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="w-full max-w-md animate-fadeInUp"
                          x-data="{ revealed: false }"
                          x-on:pointerdown="revealed = true"
                          x-on:pointerup="revealed = false"
                          x-on:pointerleave="revealed = false">
-                        {{-- Discussion panel: identical for everyone --}}
                         <div class="glass-panel border border-border-default p-8 text-center cursor-pointer hover:border-accent-gold/40 transition-all duration-200">
                             <div class="text-5xl mb-4 animate-floatSlow">☀️</div>
                             <p class="text-text-primary font-medium text-lg">{{ __('ui.game.discussion_time') }}</p>
                             <p class="text-text-muted text-sm mt-2">{{ __('ui.game.discussion_subtitle') }}</p>
                             <p class="text-text-muted/40 text-xs mt-3">{{ __('ui.role.hold_to_reveal') }}</p>
                         </div>
-                        {{-- Hold-to-reveal results: same position for everyone, only content differs --}}
                         <div x-show="revealed" x-cloak
                              x-transition:enter="transition-all duration-300"
                              x-transition:enter-start="opacity-0 scale-95"
@@ -295,6 +420,7 @@
                             @endif
                         </div>
                     </div>
+
                 @elseif($state->phase === 'voting' && !$player->is_narrator)
                     @php
                         $data = $state->data ?? [];
@@ -305,7 +431,6 @@
                         $swapPending = !empty($data['devoted_servant_swap_pending']) && $isDevotedServant;
                     @endphp
                     @if($swapPending)
-                        {{-- Devoted Servant swap UI --}}
                         <div class="glass-panel border border-accent-purple/30 p-5 animate-fadeInUp">
                             <div class="space-y-4">
                                 <div class="text-center">
@@ -337,7 +462,6 @@
                             </div>
                         </div>
                     @elseif($isScapegoatDecreePending && !$scapegoatDecreeSubmitted)
-                        {{-- Scapegoat decree UI --}}
                         <div class="glass-panel border border-accent-gold/30 p-5 animate-fadeInUp">
                             <div class="space-y-4">
                                 <div class="text-center">
@@ -392,6 +516,45 @@
                                 </div>
                             </div>
                         @endif
+                    @endif
+                @endif
+
+                {{-- READY BUTTON (for all phases except waiting/finished/dead) --}}
+                @if(!in_array($state->phase, ['waiting', 'finished']) && $player->is_alive && !$pendingHunterAction)
+                    @if($state->phase === 'night' && $isSequentialNight && $player->role && $player->role->night_order !== null && $activeNightRole !== $player->role->key)
+                        {{-- Sequential mode: show ready button even when not active --}}
+                        <div class="w-full max-w-md mt-4">
+                            <div class="glass-panel border border-border-default p-4 text-center">
+                                <p class="text-text-muted text-xs mb-3">{{ __('ui.game.waiting_night_action') }}</p>
+                                <button wire:click="readyUp"
+                                        class="w-full py-3 rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg
+                                               {{ $ready
+                                                   ? 'bg-accent-green/20 text-accent-green border border-accent-green/40'
+                                                   : 'bg-bg-surface/50 text-text-secondary border border-border-default hover:bg-bg-elevated hover:border-accent-gold/30' }}">
+                                    {{ $ready ? '✓ '.__('ui.game.ready') : __('ui.game.mark_ready') }}
+                                </button>
+                            </div>
+                        </div>
+                    @elseif($state->phase === 'night')
+                        <div class="w-full max-w-md mt-4">
+                            <button wire:click="readyUp"
+                                    class="w-full py-3 rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg
+                                           {{ $ready
+                                               ? 'bg-accent-green/20 text-accent-green border border-accent-green/40'
+                                               : 'bg-bg-surface/50 text-text-secondary border border-border-default hover:bg-bg-elevated hover:border-accent-gold/30' }}">
+                                {{ $ready ? '✓ '.__('ui.game.ready') : __('ui.game.mark_ready') }}
+                            </button>
+                        </div>
+                    @elseif($state->phase === 'day')
+                        <div class="w-full max-w-md mt-4">
+                            <button wire:click="readyUp"
+                                    class="w-full py-3 rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg
+                                           {{ $ready
+                                               ? 'bg-accent-green/20 text-accent-green border border-accent-green/40'
+                                               : 'bg-bg-surface/50 text-text-secondary border border-border-default hover:bg-bg-elevated hover:border-accent-gold/30' }}">
+                                {{ $ready ? '✓ '.__('ui.game.ready_to_vote') : __('ui.game.mark_ready_to_vote') }}
+                            </button>
+                        </div>
                     @endif
                 @endif
             </div>

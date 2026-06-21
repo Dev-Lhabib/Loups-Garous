@@ -19,6 +19,9 @@ class ActionService
         $state = $room->gameState;
         if (!$state || $state->phase !== 'night') abort(403);
 
+        $stateData = $state->data ?? [];
+        if (!empty($stateData['paused'])) abort(403, 'Game is paused');
+
         $actionType = $data['action_type'];
         $role = $player->role;
         if (!$role) abort(403);

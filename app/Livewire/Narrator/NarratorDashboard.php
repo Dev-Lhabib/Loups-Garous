@@ -4,8 +4,10 @@ namespace App\Livewire\Narrator;
 
 use App\Events\GameReset;
 use App\Events\SuspiciousAccessAttempt;
+use App\Events\GameFinished;
 use App\Game\Engine\GameEngine;
-use App\Game\Engine\PhaseManager;
+use App\Game\Services\NarratorControlService;
+use App\Game\Services\ProgressTracker;
 use App\Models\CoupleBond;
 use App\Models\GameState;
 use App\Models\NightAction;
@@ -13,7 +15,6 @@ use App\Models\Player;
 use App\Models\Room;
 use App\Models\Vote;
 use Livewire\Component;
-use Illuminate\Support\Facades\DB;
 
 class NarratorDashboard extends Component
 {
@@ -23,10 +24,16 @@ class NarratorDashboard extends Component
     public array $gameLog = [];
     public array $nightActionFeed = [];
     public array $pendingRoles = [];
+    public string $sidebarTab = 'status';
+    public string $nightMode = 'parallel';
+    public bool $showTimerConfig = false;
+    public int $timerNightSeconds = 120;
+    public int $timerDiscussionSeconds = 180;
+    public int $timerVotingSeconds = 60;
 
     public function mount(Room $room)
     {
-        $requestPlayer = request()->get('_player');
+        $requestPlayer = $this->resolvePlayerFromSession();
 
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $room->id) {
             if ($requestPlayer) {
@@ -46,75 +53,235 @@ class NarratorDashboard extends Component
         $this->state = $room->gameState;
         $this->initGameLog();
         $this->refreshNightFeed();
+        $this->nightMode = $this->state->data['night_mode'] ?? 'parallel';
     }
 
-    public function advancePhase(string $toPhase)
+    public function startNight()
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
-            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted phase transition'));
-            $this->redirect(route('home'));
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->setNightMode($this->state, $this->nightMode);
+        $service->advancePhase($this->state, 'night');
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('phase_changed', ['from' => $this->state->phase, 'to' => 'night']);
+        $this->refreshNightFeed();
+    }
+
+    public function endNight()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->resolveNightOnly($this->state);
+        $this->state = $this->state->fresh();
+        $this->refreshNightFeed();
+
+        if (($this->state->data['winning_faction'] ?? null) !== null) {
+            $this->addLogEntry('game_finished', ['winning_faction' => $this->state->data['winning_faction']]);
             return;
         }
 
-        try {
-            $engine = app(GameEngine::class);
+        $this->addLogEntry('night_resolved', []);
 
-            if ($this->state->phase === 'night' && $toPhase === 'day') {
-                $this->clearNightTimers();
-                $engine->resolveNight($this->state);
-                $this->addLogEntry('night_resolved', []);
-            } elseif ($this->state->phase === 'voting' && $toPhase === 'night') {
-                $this->clearNightTimers();
-                $engine->resolveVote($this->state);
-                $this->addLogEntry('voting_resolved', []);
-            } else {
-                $this->clearNightTimers();
-                $engine->advancePhase($this->state, $toPhase);
-            }
+        $winner = $this->checkWinCondition();
+        if ($winner) {
+            return;
+        }
 
+        $service->advancePhase($this->state, 'day');
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
+    }
+
+    public function startDay()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->advancePhase($this->state, 'day');
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('phase_changed', ['from' => $this->state->phase, 'to' => 'day']);
+    }
+
+    public function startVoting()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->advancePhase($this->state, 'voting');
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('phase_changed', ['from' => $this->state->phase, 'to' => 'voting']);
+    }
+
+    public function endVoting()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->resolveVoteOnly($this->state);
+        $this->state = $this->state->fresh();
+
+        if (($this->state->data['winning_faction'] ?? null) !== null) {
+            $this->addLogEntry('game_finished', ['winning_faction' => $this->state->data['winning_faction']]);
+            return;
+        }
+
+        $this->addLogEntry('voting_resolved', []);
+
+        $winner = $this->checkWinCondition();
+        if ($winner) {
+            return;
+        }
+
+        $data = $this->state->data ?? [];
+        $secondVote = $data['second_vote_triggered'] ?? false;
+        if ($secondVote) {
+            $data['second_vote_triggered'] = false;
+            $this->state->data = $data;
+            $this->state->save();
+            $service->advancePhase($this->state, 'day');
             $this->state = $this->state->fresh();
-            $this->addLogEntry('phase_changed', ['from' => $this->state->phase, 'to' => $toPhase]);
-            $this->refreshNightFeed();
-
-            if ($toPhase === 'night') {
-                $this->initNightTimer();
-            }
-        } catch (\InvalidArgumentException $e) {
-            session()->flash('error', $e->getMessage());
+            $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'day']);
+        } else {
+            $service->advancePhase($this->state, 'night');
+            $this->state = $this->state->fresh();
+            $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'night']);
         }
     }
 
-    public function forceResolve()
+    public function endGame()
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
-            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted force resolve'));
-            $this->redirect(route('home'));
-            return;
-        }
+        $this->guardNarrator();
+        if ($this->state->phase === 'finished') return;
 
-        if ($this->state->phase !== 'night') return;
+        $data = $this->state->data;
+        $data['winning_faction'] = 'no_one';
+        $this->state->data = $data;
+        $this->state->save();
 
-        $this->clearNightTimers();
-        $engine = app(GameEngine::class);
-        $engine->resolveNight($this->state);
+        $this->room->status = 'finished';
+        $this->room->save();
+
+        $phaseManager = app(\App\Game\Engine\PhaseManager::class);
+        $phaseManager->transition($this->state, 'finished');
 
         $this->state = $this->state->fresh();
-        $this->addLogEntry('night_resolved', []);
-        $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
+        $this->addLogEntry('game_finished', ['winning_faction' => 'no_one']);
+    }
+
+    public function pauseGame()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $paused = $service->togglePause($this->state);
+        $this->state = $this->state->fresh();
+        $this->addLogEntry($paused ? 'game_paused' : 'game_resumed', []);
+    }
+
+    public function activateNextRole()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $nextRole = $service->activateNextRole($this->state);
+        $this->state = $this->state->fresh();
+
+        if ($nextRole) {
+            $this->addLogEntry('night_role_activated', ['role' => $nextRole]);
+        }
+
         $this->refreshNightFeed();
+    }
+
+    public function skipCurrentNightRole()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $nextRole = $service->skipCurrentNightRole($this->state);
+        $this->state = $this->state->fresh();
+
+        if ($nextRole) {
+            $this->addLogEntry('night_role_activated', ['role' => $nextRole]);
+        } else {
+            $this->addLogEntry('night_sequence_complete', []);
+        }
+
+        $this->refreshNightFeed();
+    }
+
+    public function skipPlayer($playerId)
+    {
+        $this->guardNarrator();
+        $player = Player::findOrFail($playerId);
+        $service = app(NarratorControlService::class);
+        $service->skipPlayerNightAction($player, $this->state);
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('player_skipped', ['nickname' => $player->nickname]);
+        $this->refreshNightFeed();
+    }
+
+    public function forceEndNight()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->forceEndNight($this->state);
+        $this->state = $this->state->fresh();
+        $this->refreshNightFeed();
+
+        if (($this->state->data['winning_faction'] ?? null) !== null) {
+            $this->addLogEntry('game_finished', ['winning_faction' => $this->state->data['winning_faction']]);
+            return;
+        }
+
+        $winner = $this->checkWinCondition();
+        if ($winner) {
+            return;
+        }
+
+        $service->advancePhase($this->state, 'day');
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
+    }
+
+    public function setNightMode(string $mode)
+    {
+        if (!in_array($mode, ['sequential', 'parallel'], true)) return;
+        $this->nightMode = $mode;
+    }
+
+    public function startTimer()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $seconds = match ($this->state->phase) {
+            'night' => $this->timerNightSeconds,
+            'day' => $this->timerDiscussionSeconds,
+            'voting' => $this->timerVotingSeconds,
+            default => 0,
+        };
+        if ($seconds > 0) {
+            $service->startTimer($this->state, $this->state->phase, $seconds);
+            $this->state = $this->state->fresh();
+            $this->addLogEntry('timer_started', ['seconds' => $seconds]);
+        }
+    }
+
+    public function extendTimer(int $seconds)
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->extendTimer($this->state, $seconds);
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('timer_extended', ['seconds' => $seconds]);
+    }
+
+    public function dismissTimer()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->dismissTimer($this->state);
+        $this->state = $this->state->fresh();
+        $this->addLogEntry('timer_dismissed', []);
     }
 
     public function littleGirlCaught()
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
-            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted little girl caught'));
-            $this->redirect(route('home'));
-            return;
-        }
-
+        $this->guardNarrator();
         if ($this->state->phase !== 'night') return;
 
         $littleGirl = Player::where('room_id', $this->room->id)
@@ -139,16 +306,10 @@ class NarratorDashboard extends Component
 
     public function newGame()
     {
-        $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
-            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted new game'));
-            $this->redirect(route('home'));
-            return;
-        }
-
+        $this->guardNarrator();
         $room = $this->room;
 
-        DB::transaction(function () use ($room) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($room) {
             if ($room->gameState) {
                 $stateId = $room->gameState->id;
                 NightAction::where('game_state_id', $stateId)->delete();
@@ -168,28 +329,63 @@ class NarratorDashboard extends Component
         });
 
         event(new GameReset($room));
-
         $this->redirect(route('lobby.narrator', $room));
     }
 
-    private function initNightTimer()
+    public function tick(): void
     {
+        $this->state = $this->state->fresh();
+
+        if (($this->state->data['winning_faction'] ?? null) !== null) {
+            return;
+        }
+
         $data = $this->state->data ?? [];
-        $data['night_started_at'] = now()->toIso8601String();
-        $data['night_timeout_seconds'] = 120;
-        $data['auto_resolve_at'] = null;
-        $data['player_heartbeats'] = $data['player_heartbeats'] ?? [];
-        $this->state->data = $data;
-        $this->state->save();
+        if (!empty($data['paused'])) return;
+
+        $this->checkTimerExpiry();
+
+        $this->refreshNightFeed();
     }
 
-    private function clearNightTimers()
+    private function checkTimerExpiry(): void
     {
+        $phase = $this->state->phase;
+        if (in_array($phase, ['waiting', 'finished'], true)) return;
+
         $data = $this->state->data ?? [];
-        unset($data['night_started_at']);
-        unset($data['auto_resolve_at']);
-        $this->state->data = $data;
-        $this->state->save();
+        $timerKey = "{$phase}_timer_started_at";
+        $configKey = "{$phase}_timer_config";
+        $expiredKey = "{$phase}_timer_expired";
+
+        $startedAt = $data[$timerKey] ?? null;
+        $configSeconds = $data[$configKey] ?? 0;
+
+        if (!$startedAt || $configSeconds <= 0) return;
+        if (!empty($data[$expiredKey])) return;
+
+        $elapsed = now()->diffInSeconds(\Carbon\Carbon::parse($startedAt));
+        if ($elapsed >= $configSeconds) {
+            $data[$expiredKey] = true;
+            $this->state->data = $data;
+            $this->state->save();
+            $this->addLogEntry('timer_expired', []);
+            $this->dispatch('timer-expired');
+        }
+    }
+
+    private function checkWinCondition(): ?\App\Game\Factions\FactionInterface
+    {
+        $winChecker = app(\App\Game\Engine\WinConditionChecker::class);
+        $winner = $winChecker->check($this->state);
+        if ($winner) {
+            $engine = app(GameEngine::class);
+            $engine->endGame($this->state, $winner);
+            $this->state = $this->state->fresh();
+            $this->addLogEntry('game_finished', ['winning_faction' => $winner->getKey()]);
+            return $winner;
+        }
+        return null;
     }
 
     private function initGameLog()
@@ -265,149 +461,43 @@ class NarratorDashboard extends Component
         $this->pendingRoles = $pending;
     }
 
-    private function checkHeartbeats(): array
-    {
-        $data = $this->state->data ?? [];
-        $heartbeats = $data['player_heartbeats'] ?? [];
-        $disconnected = [];
-        $forceKilled = false;
-
-        $alivePlayers = Player::where('room_id', $this->room->id)
-            ->where('is_alive', true)
-            ->where('is_narrator', false)
-            ->get();
-
-        foreach ($alivePlayers as $p) {
-            $lastPing = $heartbeats[$p->id] ?? null;
-            if ($lastPing) {
-                $elapsed = now()->diffInSeconds(\Carbon\Carbon::parse($lastPing));
-                if ($elapsed > 60) {
-                    $disconnected[] = [
-                        'id' => $p->id,
-                        'nickname' => $p->nickname,
-                        'last_ping' => $lastPing,
-                        'elapsed' => $elapsed,
-                    ];
-
-                    if ($elapsed > 120) {
-                        $this->forceKillDisconnected($p, $data);
-                        $forceKilled = true;
-                    }
-                }
-            }
-        }
-
-        return $disconnected;
-    }
-
-    private function forceKillDisconnected(Player $player, array &$data): void
-    {
-        $player->is_alive = false;
-        $player->save();
-
-        $disconnectedPlayers = $data['disconnected_players'] ?? [];
-        $disconnectedPlayers[] = [
-            'player_id' => $player->id,
-            'nickname' => $player->nickname,
-            'disconnected_at' => now()->toIso8601String(),
-            'force_killed' => true,
-        ];
-        $data['disconnected_players'] = $disconnectedPlayers;
-        $this->state->data = $data;
-        $this->state->save();
-
-        event(new \App\Events\PlayerEliminated($player));
-
-        $winChecker = app(\App\Game\Engine\WinConditionChecker::class);
-        $winner = $winChecker->check($this->state);
-        if ($winner) {
-            $engine = app(GameEngine::class);
-            $engine->endGame($this->state, $winner);
-        }
-    }
-
-    public function getNightElapsed(): int
-    {
-        $data = $this->state->data ?? [];
-        $startedAt = $data['night_started_at'] ?? null;
-        if (!$startedAt) return 0;
-        return now()->diffInSeconds(\Carbon\Carbon::parse($startedAt));
-    }
-
-    public function getNightRemaining(): int
-    {
-        $data = $this->state->data ?? [];
-        $startedAt = $data['night_started_at'] ?? null;
-        $timeout = $data['night_timeout_seconds'] ?? 120;
-        if (!$startedAt) return $timeout;
-        $elapsed = now()->diffInSeconds(\Carbon\Carbon::parse($startedAt));
-        return max(0, $timeout - $elapsed);
-    }
-
-    public function getAutoResolveTimeLeft(): ?int
-    {
-        $data = $this->state->data ?? [];
-        $autoResolveAt = $data['auto_resolve_at'] ?? null;
-        if (!$autoResolveAt) return null;
-        return max(0, now()->diffInSeconds(\Carbon\Carbon::parse($autoResolveAt), false));
-    }
-
     public function getListeners()
     {
         return [
             "echo-private:room.{$this->room->id},PhaseChanged" => 'onPhaseChanged',
             "echo-private:room.{$this->room->id},PlayerEliminated" => 'onPlayerEliminated',
+            "echo-private:room.{$this->room->id},GamePaused" => 'onGamePaused',
             "echo-private:narrator.{$this->room->id},NightActionSubmitted" => 'onNightActionSubmitted',
             "echo-private:narrator.{$this->room->id},VoteSubmitted" => 'onVoteSubmitted',
             "echo-private:narrator.{$this->room->id},SuspiciousAccessAttempt" => 'onSuspiciousAccess',
             "echo-private:room.{$this->room->id},GameFinished" => 'onGameFinished',
-            "echo-private:room.{$this->room->id},AllPlayersReady" => 'onAllPlayersReady',
         ];
+    }
+
+    public function onGamePaused(array $payload)
+    {
+        $this->state = $this->state->fresh();
+        $paused = !empty($payload['paused']);
+        $this->addLogEntry($paused ? 'game_paused' : 'game_resumed', []);
+        $this->dispatch('game-paused', paused: $paused);
     }
 
     public function onPhaseChanged()
     {
         $this->state = $this->state->fresh();
         $this->refreshNightFeed();
-
-        if ($this->state->phase === 'night') {
-            $this->initNightTimer();
-        } else {
-            $this->clearNightTimers();
-        }
-
         $phase = $this->state->phase;
-        $labels = [
-            'waiting' => __('ui.phase.waiting'),
-            'night' => __('ui.phase.night'),
-            'day' => __('ui.phase.day'),
-            'voting' => __('ui.phase.voting'),
-            'finished' => __('ui.phase.finished'),
-        ];
-        $subtitles = [
-            'night' => __('ui.phase.night_subtitle'),
-            'day' => __('ui.phase.day_subtitle'),
-            'voting' => __('ui.phase.voting_subtitle'),
-            'finished' => __('ui.phase.finished_subtitle'),
-        ];
-        $icons = [
-            'night' => '🌙',
-            'day' => '☀️',
-            'voting' => '🗳️',
-            'finished' => '🏆',
-        ];
-        $classes = [
-            'waiting' => 'phase-overlay phase-overlay-waiting',
-            'night' => 'phase-overlay phase-overlay-night',
-            'day' => 'phase-overlay phase-overlay-day',
-            'voting' => 'phase-overlay phase-overlay-voting',
-            'finished' => 'phase-overlay phase-overlay-finished',
-        ];
         $this->dispatch('transition-phase',
-            label: $labels[$phase] ?? '',
-            subtitle: $subtitles[$phase] ?? '',
-            icon: $icons[$phase] ?? '',
-            class: $classes[$phase] ?? '',
+            label: __("ui.phase.{$phase}"),
+            subtitle: __("ui.phase.{$phase}_subtitle"),
+            icon: match ($phase) { 'night' => '🌙', 'day' => '☀️', 'voting' => '🗳️', 'finished' => '🏆', default => '' },
+            class: match ($phase) {
+                'night' => 'phase-overlay phase-overlay-night',
+                'day' => 'phase-overlay phase-overlay-day',
+                'voting' => 'phase-overlay phase-overlay-voting',
+                'finished' => 'phase-overlay phase-overlay-finished',
+                default => 'phase-overlay phase-overlay-waiting',
+            },
         );
     }
 
@@ -421,7 +511,6 @@ class NarratorDashboard extends Component
     public function onNightActionSubmitted()
     {
         $this->refreshNightFeed();
-        $this->checkAutoResolve();
     }
 
     public function onVoteSubmitted()
@@ -440,74 +529,17 @@ class NarratorDashboard extends Component
     public function onGameFinished($payload)
     {
         $this->state = $this->state->fresh();
-        $this->clearNightTimers();
         $this->addLogEntry('game_finished', [
             'winning_faction' => $payload['winning_faction'] ?? 'unknown',
         ]);
     }
 
-    public function onAllPlayersReady()
+    private function guardNarrator(): void
     {
-        $this->addLogEntry('all_players_ready', []);
-        $this->advancePhase('night');
-    }
-
-    public function checkAutoResolve(): void
-    {
-        if ($this->state->phase !== 'night') return;
-
-        if (empty($this->pendingRoles)) {
-            $data = $this->state->data ?? [];
-            if (!isset($data['auto_resolve_at'])) {
-                $data['auto_resolve_at'] = now()->addSeconds(3)->toIso8601String();
-                $this->state->data = $data;
-                $this->state->save();
-                $this->dispatch('auto-resolve-countdown', seconds: 3);
-            }
-        } else {
-            $data = $this->state->data ?? [];
-            if (isset($data['auto_resolve_at'])) {
-                unset($data['auto_resolve_at']);
-                $this->state->data = $data;
-                $this->state->save();
-            }
-        }
-    }
-
-    public function tick(): void
-    {
-        if ($this->state->phase !== 'night') return;
-
-        $this->refreshNightFeed();
-
-        $data = $this->state->data ?? [];
-
-        // Check auto-resolve (all actions submitted)
-        $autoResolveAt = $data['auto_resolve_at'] ?? null;
-        if ($autoResolveAt && now() >= \Carbon\Carbon::parse($autoResolveAt)) {
-            $this->clearNightTimers();
-            $engine = app(GameEngine::class);
-            $engine->resolveNight($this->state);
-            $this->state = $this->state->fresh();
-            $this->addLogEntry('night_resolved', []);
-            $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
-            $this->refreshNightFeed();
-            return;
-        }
-
-        // Check timeout
-        $nightStartedAt = $data['night_started_at'] ?? null;
-        $timeout = $data['night_timeout_seconds'] ?? 120;
-        if ($nightStartedAt && (now()->diffInSeconds(\Carbon\Carbon::parse($nightStartedAt)) >= $timeout)) {
-            if (!empty($this->pendingRoles)) {
-                $this->addLogEntry('night_resolved', []);
-            }
-            $this->clearNightTimers();
-            $engine = app(GameEngine::class);
-            $engine->resolveNight($this->state);
-            $this->state = $this->state->fresh();
-            $this->addLogEntry('phase_changed', ['from' => 'night', 'to' => 'day']);
-            $this->refreshNightFeed();
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
+            event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted narrator action'));
+            abort(403);
         }
     }
 
@@ -519,8 +551,6 @@ class NarratorDashboard extends Component
 
     public function render()
     {
-        $this->refreshNightFeed();
-
         $players = Player::where('room_id', $this->room->id)
             ->where('is_narrator', false)
             ->with('role')
@@ -528,7 +558,7 @@ class NarratorDashboard extends Component
             ->get();
 
         $phase = $this->state->phase;
-        $availableTransitions = $this->getTransitions($phase);
+        $totalAlive = $players->where('is_alive', true)->count();
 
         $voteTally = [];
         $voteCount = 0;
@@ -541,8 +571,6 @@ class NarratorDashboard extends Component
             arsort($voteTally);
         }
 
-        $totalAlive = $players->where('is_alive', true)->count();
-
         $coupleBonds = CoupleBond::where('game_state_id', $this->state->id)->get();
         $loverMap = [];
         foreach ($coupleBonds as $bond) {
@@ -551,6 +579,37 @@ class NarratorDashboard extends Component
         }
 
         $enchantedIds = $this->state->data['enchanted_player_ids'] ?? [];
+        $data = $this->state->data ?? [];
+        $paused = !empty($data['paused']);
+        $isSequential = ($data['night_mode'] ?? 'parallel') === 'sequential';
+        $activeNightRole = $data['active_night_role'] ?? null;
+        $nightRoleOrderIndex = $data['night_role_order_index'] ?? -1;
+        $nightRoleOrder = $data['night_role_order'] ?? [];
+
+        $timerRemaining = null;
+        $timerExpired = false;
+        if (!in_array($phase, ['waiting', 'finished'], true)) {
+            $startedAt = $data["{$phase}_timer_started_at"] ?? null;
+            $configSeconds = $data["{$phase}_timer_config"] ?? 0;
+            $timerExpired = !empty($data["{$phase}_timer_expired"]);
+            if ($startedAt && $configSeconds > 0) {
+                $elapsed = now()->diffInSeconds(\Carbon\Carbon::parse($startedAt));
+                $timerRemaining = max(0, $configSeconds - $elapsed);
+            }
+        }
+
+        $progressTracker = app(ProgressTracker::class);
+        $readyStatuses = $progressTracker->getReadyStatuses($this->state);
+        $readyCount = $progressTracker->getReadyCount($this->state);
+        $totalActivePlayers = $progressTracker->getTotalActivePlayers($this->state, $phase);
+        $nightProgress = $phase === 'night' ? $progressTracker->getNightActionProgress($this->state) : [];
+
+        $littleGirlAlive = $players->contains(function ($p) {
+            return $p->is_alive && $p->role && $p->role->key === 'little_girl';
+        });
+
+        $pendingRoleKeys = array_unique(array_column($this->pendingRoles, 'role_key'));
+        $completedRoleKeys = array_unique(array_column($this->nightActionFeed, 'role_key'));
 
         $nightOrder = [
             'cupid', 'wolf_hound', 'werewolf', 'big_bad_wolf',
@@ -558,40 +617,34 @@ class NarratorDashboard extends Component
             'little_girl', 'seer', 'witch', 'pied_piper', 'fox', 'bear_tamer',
         ];
 
-        $actionHistory = $this->state->data['action_history'] ?? [];
-
-        $disconnectedPlayers = $this->checkHeartbeats();
-        $nightElapsed = $this->getNightElapsed();
-        $nightRemaining = $this->getNightRemaining();
-        $autoResolveTimeLeft = $this->getAutoResolveTimeLeft();
-
-        $pendingRoleKeys = array_unique(array_column($this->pendingRoles, 'role_key'));
-        $completedRoleKeys = array_unique(array_column($this->nightActionFeed, 'role_key'));
-
-        $littleGirlAlive = $players->contains(function ($p) {
-            return $p->is_alive && $p->role && $p->role->key === 'little_girl';
-        });
-
+        $actionHistory = $data['action_history'] ?? [];
         $bearTamerGrowl = $this->checkBearTamerGrowl($players);
 
         return view('livewire.narrator.narrator-dashboard', [
             'players' => $players,
-            'availableTransitions' => $availableTransitions,
+            'totalAlive' => $totalAlive,
+            'phase' => $phase,
             'voteTally' => $voteTally,
             'voteCount' => $voteCount,
-            'totalAlive' => $totalAlive,
             'loverMap' => $loverMap,
             'enchantedIds' => $enchantedIds,
+            'paused' => $paused,
+            'isSequential' => $isSequential,
+            'activeNightRole' => $activeNightRole,
+            'nightRoleOrderIndex' => $nightRoleOrderIndex,
+            'nightRoleOrder' => $nightRoleOrder,
+            'timerRemaining' => $timerRemaining,
+            'timerExpired' => $timerExpired,
+            'readyStatuses' => $readyStatuses,
+            'readyCount' => $readyCount,
+            'totalActivePlayers' => $totalActivePlayers,
+            'nightProgress' => $nightProgress,
+            'littleGirlAlive' => $littleGirlAlive,
+            'pendingRoleKeys' => $pendingRoleKeys,
+            'completedRoleKeys' => $completedRoleKeys,
             'nightOrder' => $nightOrder,
             'state' => $this->state,
             'actionHistory' => $actionHistory,
-            'disconnectedPlayers' => $disconnectedPlayers,
-            'nightElapsed' => $nightElapsed,
-            'nightRemaining' => $nightRemaining,
-            'autoResolveTimeLeft' => $autoResolveTimeLeft,
-            'pendingRoleKeys' => $pendingRoleKeys,
-            'completedRoleKeys' => $completedRoleKeys,
-            'littleGirlAlive' => $littleGirlAlive,
             'bearTamerGrowl' => $bearTamerGrowl,
         ])->layout('layouts.app');
     }
@@ -634,16 +687,5 @@ class NarratorDashboard extends Component
             'growls' => true,
             'werewolf_count' => count($adjacentWerewolves),
         ];
-    }
-
-    private function getTransitions(string $phase): array
-    {
-        return match ($phase) {
-            'night' => ['day', 'finished'],
-            'day' => ['voting', 'night'],
-            'voting' => ['night', 'finished'],
-            'finished' => [],
-            default => [],
-        };
     }
 }

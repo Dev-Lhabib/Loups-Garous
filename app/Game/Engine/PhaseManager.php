@@ -10,9 +10,9 @@ use InvalidArgumentException;
 class PhaseManager
 {
     private array $validTransitions = [
-        'waiting' => ['night'],
+        'waiting' => ['night', 'finished'],
         'night' => ['day', 'finished'],
-        'day' => ['voting', 'night'],
+        'day' => ['voting', 'night', 'finished'],
         'voting' => ['night', 'day', 'finished'],
         'finished' => [],
     ];

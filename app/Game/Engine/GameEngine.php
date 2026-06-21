@@ -75,6 +75,34 @@ class GameEngine
         }
     }
 
+    public function resolveNightOnly(GameState $state): void
+    {
+        $this->actionResolver->resolve($state);
+
+        $state = $state->fresh();
+
+        if (($state->data['winning_faction'] ?? null) !== null) {
+            return;
+        }
+
+        $winner = $this->winChecker->check($state);
+        if ($winner) {
+            $this->endGame($state, $winner);
+        }
+    }
+
+    public function resolveVoteOnly(GameState $state): ?\App\Game\Factions\FactionInterface
+    {
+        $service = app(\App\Game\Services\VotingService::class);
+        $winner = $service->resolve($state);
+
+        if ($winner) {
+            $this->endGame($state, $winner);
+        }
+
+        return $winner;
+    }
+
     public function eliminatePlayer(Player $player, GameState $state): ?\App\Game\Factions\FactionInterface
     {
         return DB::transaction(function () use ($player, $state) {
