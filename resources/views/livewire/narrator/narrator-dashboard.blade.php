@@ -284,12 +284,30 @@
                     </button>
 
                 @elseif($phase === 'voting')
-                    <button wire:click="endVoting"
-                            wire:confirm="{{ __('ui.narrator.confirm_end_voting') }}"
-                            class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
-                                   bg-accent-red-dark text-white hover:bg-accent-red hover:scale-105 active:scale-95">
-                        📊 {{ __('ui.narrator.end_voting') }}
-                    </button>
+                    @if($votingTransitionNeeded)
+                        <div class="flex flex-col gap-2">
+                            <p class="text-xs text-text-muted text-center">{{ __('ui.narrator.vote_resolved_choose_next') }}</p>
+                            <div class="flex gap-2">
+                                <button wire:click="goToDayAfterVote"
+                                        class="flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                               bg-accent-gold text-bg-primary hover:scale-105 active:scale-95">
+                                    ☀️ {{ __('ui.narrator.go_to_day') }}
+                                </button>
+                                <button wire:click="goToNightAfterVote"
+                                        class="flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                               bg-accent-blue text-white hover:bg-accent-blue-dark hover:scale-105 active:scale-95">
+                                    🌙 {{ __('ui.narrator.go_to_night') }}
+                                </button>
+                            </div>
+                        </div>
+                    @else
+                        <button wire:click="endVoting"
+                                wire:confirm="{{ __('ui.narrator.confirm_end_voting') }}"
+                                class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                       bg-accent-red-dark text-white hover:bg-accent-red hover:scale-105 active:scale-95">
+                            📊 {{ __('ui.narrator.end_voting') }}
+                        </button>
+                    @endif
 
                 @elseif($phase === 'waiting')
                     <button wire:click="startNight"

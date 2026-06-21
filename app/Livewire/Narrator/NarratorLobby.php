@@ -31,6 +31,7 @@ class NarratorLobby extends Component
     public string $joinUrl = '';
     public string $copied = '';
     public bool $showQr = true;
+    public bool $firstDayVoting = true;
 
     public function mount(Room $room)
     {
@@ -53,6 +54,8 @@ class NarratorLobby extends Component
         $this->expectedPlayerCount = $room->settings['expected_player_count'] ?? 9;
         $this->mode = $room->settings['config_mode'] ?? 'beginner';
         $this->setupApplied = $room->settings['setup_applied'] ?? false;
+
+        $this->firstDayVoting = $room->settings['first_day_voting'] ?? true;
 
         $this->refreshPlayerCount();
         $this->initRoleCounts();
@@ -107,6 +110,8 @@ class NarratorLobby extends Component
         $this->mode = $this->mode === 'beginner' ? 'advanced' : 'beginner';
         if ($this->mode === 'beginner') {
             $this->autoFillVillagers();
+        } elseif ($this->mode === 'advanced') {
+            $this->roleCounts['villager'] = 0;
         }
         $this->saveSettings();
     }
@@ -169,6 +174,7 @@ class NarratorLobby extends Component
 
     private function autoFillVillagers()
     {
+        if ($this->mode === 'advanced') return;
         if ($this->expectedPlayerCount <= 0) return;
 
         $nonVillagerCount = 0;
@@ -181,6 +187,20 @@ class NarratorLobby extends Component
         $this->roleCounts['villager'] = max(0, $this->expectedPlayerCount - $nonVillagerCount);
     }
 
+    public function toggleFirstDayVoting()
+    {
+        $this->firstDayVoting = !$this->firstDayVoting;
+        $this->saveGameRules();
+    }
+
+    private function saveGameRules()
+    {
+        $settings = $this->room->settings ?? [];
+        $settings['first_day_voting'] = $this->firstDayVoting;
+        $this->room->settings = $settings;
+        $this->room->save();
+    }
+
     private function saveRoleCounts()
     {
         $settings = $this->room->settings ?? [];
@@ -188,6 +208,7 @@ class NarratorLobby extends Component
         $settings['setup_applied'] = $this->setupApplied;
         $settings['expected_player_count'] = $this->expectedPlayerCount;
         $settings['config_mode'] = $this->mode;
+        $settings['first_day_voting'] = $this->firstDayVoting;
         $this->room->settings = $settings;
         $this->room->save();
         $this->validateConfig();
@@ -199,6 +220,7 @@ class NarratorLobby extends Component
         $settings['expected_player_count'] = $this->expectedPlayerCount;
         $settings['config_mode'] = $this->mode;
         $settings['setup_applied'] = $this->setupApplied;
+        $settings['first_day_voting'] = $this->firstDayVoting;
         $this->room->settings = $settings;
         $this->room->save();
         $this->validateConfig();
@@ -213,6 +235,12 @@ class NarratorLobby extends Component
         $this->roleErrors = $validator->getPerRoleErrors($this->roleCounts);
         $this->warnings = $validator->getWarnings($effectiveCount, $this->roleCounts);
         $this->balanceStatus = $validator->getBalanceStatus($effectiveCount, $this->roleCounts);
+
+        $totalAssigned = array_sum($this->roleCounts);
+        if ($this->mode === 'advanced' && $effectiveCount > 0 && $totalAssigned !== $effectiveCount) {
+            $this->validationErrors[] = __('ui.lobby.advanced_exact_count', ['expected' => $effectiveCount, 'assigned' => $totalAssigned]);
+        }
+
         $this->canStart = empty($this->validationErrors) && $effectiveCount >= 4;
     }
 

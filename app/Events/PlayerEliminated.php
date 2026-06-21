@@ -13,7 +13,9 @@ class PlayerEliminated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets;
 
     public function __construct(
-        public Player $player
+        public Player $player,
+        public ?string $cause = null,
+        public ?string $causeLocale = null
     ) {}
 
     public function broadcastOn(): PrivateChannel
@@ -24,11 +26,14 @@ class PlayerEliminated implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $role = $this->player->role;
+        $locale = $this->causeLocale ?? app()->getLocale();
 
         return [
             'nickname' => $this->player->nickname,
             'role_key' => $role ? $role->key : null,
-            'role_name' => $role ? __('roles.' . $role->key . '.name', [], app()->getLocale()) : null,
+            'role_name' => $role ? __('roles.' . $role->key . '.name', [], $locale) : null,
+            'cause' => $this->cause ? __('game.' . $this->cause, [], $locale) : null,
+            'cause_key' => $this->cause,
         ];
     }
 }

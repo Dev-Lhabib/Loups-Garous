@@ -50,6 +50,9 @@ $eventColors = [
                             [{{ __("ui.phase.{$entry['from']}") }} → {{ __("ui.phase.{$entry['to']}") }}]
                         @elseif($type === 'player_eliminated')
                             {{ __('ui.narrator.log_eliminated', ['name' => $entry['nickname'] ?? '?']) }}
+                            @if(!empty($entry['cause_key']))
+                                <span class="text-text-muted ml-1">· {{ __("game.{$entry['cause_key']}") }}</span>
+                            @endif
                         @elseif($type === 'night_resolved')
                             {{ __('ui.narrator.log_night_resolved') }}
                         @elseif($type === 'vote_submitted')

@@ -29,6 +29,7 @@ class NightAction extends Component
     public bool $isSequential = false;
     public ?string $activeNightRole = null;
     public bool $waitingForRole = false;
+    public bool $passiveConfirmed = false;
 
     private array $multiActionRoles = ['witch'];
 
@@ -151,6 +152,28 @@ class NightAction extends Component
             $this->confirming = false;
             $this->wolfHoundSide = null;
             $this->wantsMoreActions = false;
+        }
+    }
+
+    public function confirmPassive(): void
+    {
+        if ($this->hasNightAction) return;
+        if ($this->passiveConfirmed) return;
+
+        $requestPlayer = $this->resolvePlayerFromSession();
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+
+        $state = $this->room->gameState;
+        if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
+
+        $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+            'action_type' => 'passive_action',
+        ]);
+
+        if ($action) {
+            $this->passiveConfirmed = true;
+            $this->submitted = true;
+            $this->submittedAction = $action;
         }
     }
 

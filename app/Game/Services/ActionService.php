@@ -81,6 +81,8 @@ class ActionService
 
     private function roleCanPerformAction(Role $role, string $actionType): bool
     {
+        if ($actionType === 'passive_action') return true;
+
         $map = [
             'werewolf' => ['kill'],
             'big_bad_wolf' => ['extra_kill'],

@@ -60,6 +60,26 @@
             </div>
         </div>
 
+        {{-- Game Rules Toggle --}}
+        <div class="glass-panel border border-border-default p-4 md:p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full bg-accent-purple/20 border border-accent-purple/30 text-accent-purple text-xs md:text-sm font-bold">⚙️</span>
+                <h3 class="text-sm md:text-base font-bold text-text-primary">{{ __('ui.lobby.game_rules') }}</h3>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex flex-col">
+                    <span class="text-sm text-text-primary font-medium">{{ __('ui.lobby.first_day_voting_label') }}</span>
+                    <span class="text-xs text-text-muted">{{ __('ui.lobby.first_day_voting_desc') }}</span>
+                </div>
+                <button wire:click="toggleFirstDayVoting"
+                        class="relative w-14 h-7 rounded-full transition-all duration-300 flex-shrink-0
+                               {{ $firstDayVoting ? 'bg-accent-green' : 'bg-bg-elevated border border-border-default' }}">
+                    <span class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300
+                                 {{ $firstDayVoting ? 'translate-x-7' : 'translate-x-0' }}"></span>
+                </button>
+            </div>
+        </div>
+
         {{-- Step 1: Expected Players --}}
         <div class="glass-panel border border-border-default p-4 md:p-6">
             <div class="flex items-center gap-2 mb-4">

@@ -103,13 +103,13 @@ class GameEngine
         return $winner;
     }
 
-    public function eliminatePlayer(Player $player, GameState $state): ?\App\Game\Factions\FactionInterface
+    public function eliminatePlayer(Player $player, GameState $state, ?string $cause = null): ?\App\Game\Factions\FactionInterface
     {
-        return DB::transaction(function () use ($player, $state) {
+        return DB::transaction(function () use ($player, $state, $cause) {
             $player->is_alive = false;
             $player->save();
 
-            event(new PlayerEliminated($player));
+            event(new PlayerEliminated($player, $cause));
 
             $winner = $this->winChecker->check($state);
 

@@ -145,35 +145,40 @@ class ActionResolver
             if (!$wolfFatherConverted) {
                 foreach ($killTargetIds as $targetId) {
                     if ($targetId && $targetId !== $protectedId) {
-                        $deaths[] = $targetId;
+                        $deaths[] = [$targetId, 'eliminated_by_werewolf'];
                     }
                 }
             }
 
+            $existingIds = array_map(fn ($t) => $t[0], $deaths);
+
             // Apply Big Bad Wolf extra kill
-            if ($bigBadWolfTargetId && !in_array($bigBadWolfTargetId, $deaths)) {
+            if ($bigBadWolfTargetId && !in_array($bigBadWolfTargetId, $existingIds)) {
                 $anyWolfDead = Player::where('room_id', $state->room_id)
                     ->where('is_alive', false)
                     ->whereHas('role', fn ($q) => $q->whereIn('key', ['werewolf', 'big_bad_wolf', 'accursed_wolf_father']))
                     ->exists();
                 if (!$anyWolfDead) {
-                    $deaths[] = $bigBadWolfTargetId;
+                    $deaths[] = [$bigBadWolfTargetId, 'eliminated_by_big_bad_wolf'];
+                    $existingIds[] = $bigBadWolfTargetId;
                 }
             }
 
             // Apply White Werewolf solo kill
-            if ($whiteWerewolfTargetId && !in_array($whiteWerewolfTargetId, $deaths)) {
-                $deaths[] = $whiteWerewolfTargetId;
+            if ($whiteWerewolfTargetId && !in_array($whiteWerewolfTargetId, $existingIds)) {
+                $deaths[] = [$whiteWerewolfTargetId, 'eliminated_by_white_werewolf'];
+                $existingIds[] = $whiteWerewolfTargetId;
             }
 
             // Apply Witch save — cancel werewolf kill on same target
             if ($saveTargetId) {
-                $deaths = array_filter($deaths, fn ($id) => $id !== $saveTargetId);
+                $deaths = array_filter($deaths, fn ($t) => $t[0] !== $saveTargetId);
+                $existingIds = array_map(fn ($t) => $t[0], $deaths);
             }
 
             // Apply Witch poison
-            if ($poisonTargetId && !in_array($poisonTargetId, $deaths)) {
-                $deaths[] = $poisonTargetId;
+            if ($poisonTargetId && !in_array($poisonTargetId, $existingIds)) {
+                $deaths[] = [$poisonTargetId, 'eliminated_by_witch'];
             }
 
             // Mark all actions as resolved
@@ -183,7 +188,7 @@ class ActionResolver
 
             // Apply deaths with chain
             $eliminatedNicknames = [];
-            $this->applyDeaths($state, array_unique($deaths), $eliminatedNicknames);
+            $this->applyDeaths($state, $deaths, $eliminatedNicknames);
 
             if (($state->data['winning_faction'] ?? null) !== null) {
                 return;
@@ -211,7 +216,7 @@ class ActionResolver
                 $infected->is_alive = false;
                 $infected->save();
 
-                event(new PlayerEliminated($infected));
+                event(new PlayerEliminated($infected, 'eliminated_by_infection'));
 
                 $bond = CoupleBond::where('game_state_id', $state->id)
                     ->where(function ($q) use ($infectedId) {
@@ -226,7 +231,7 @@ class ActionResolver
                         event(new LoverDied($infected, $partner));
                         $partner->is_alive = false;
                         $partner->save();
-                        event(new PlayerEliminated($partner));
+                        event(new PlayerEliminated($partner, 'eliminated_by_lover'));
                     }
                 }
 
@@ -242,13 +247,21 @@ class ActionResolver
         }
     }
 
-    private function applyDeaths(GameState $state, array $deathIds, array &$eliminatedNicknames): void
+    private function applyDeaths(GameState $state, array $deathTuples, array &$eliminatedNicknames): void
     {
-        $toProcess = $deathIds;
+        $toProcess = $deathTuples;
         $processed = [];
 
         while (!empty($toProcess)) {
-            $playerId = array_shift($toProcess);
+            $entry = array_shift($toProcess);
+            if (is_array($entry)) {
+                $playerId = $entry[0];
+                $cause = $entry[1] ?? null;
+            } else {
+                $playerId = $entry;
+                $cause = null;
+            }
+
             if (in_array($playerId, $processed)) continue;
             $processed[] = $playerId;
 
@@ -270,7 +283,7 @@ class ActionResolver
             $player->is_alive = false;
             $player->save();
 
-            event(new PlayerEliminated($player));
+            event(new PlayerEliminated($player, $cause));
 
             $winner = $this->winChecker->check($state);
             if ($winner) {
@@ -294,7 +307,7 @@ class ActionResolver
                     event(new LoverDied($player, $partner));
 
                     if (!in_array($partnerId, $processed)) {
-                        $toProcess[] = $partnerId;
+                        $toProcess[] = [$partnerId, 'eliminated_by_lover'];
                     }
                 }
             }

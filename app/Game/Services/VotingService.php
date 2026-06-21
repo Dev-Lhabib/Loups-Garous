@@ -31,6 +31,10 @@ class VotingService
         $stateData = $state->data ?? [];
         if (!empty($stateData['paused'])) abort(403, 'Game is paused');
 
+        $room = $state->room;
+        $firstDayVoting = $room->settings['first_day_voting'] ?? true;
+        if (!$firstDayVoting && $state->round === 1) abort(403, 'First day voting is disabled');
+
         $data = $state->data ?? [];
         $voteBanList = $data['vote_ban_next_round'] ?? [];
         if (in_array($voter->id, $voteBanList)) abort(403);
@@ -133,7 +137,7 @@ class VotingService
         $scapegoat = Player::find($scapegoatId);
         if (!$scapegoat || !$scapegoat->is_alive) return $this->winChecker->check($state);
 
-        return $this->eliminatePlayerWithChain($state, $scapegoat);
+        return $this->eliminatePlayerWithChain($state, $scapegoat, 'eliminated_by_scapegoat');
     }
 
     public function checkDevotedServantSwap(GameState $state, Player $eliminated): bool
@@ -199,7 +203,7 @@ class VotingService
         $eliminated = Player::find($targetId);
         if (!$eliminated || !$eliminated->is_alive) return $this->winChecker->check($state);
 
-        return $this->eliminatePlayerWithChain($state, $eliminated);
+        return $this->eliminatePlayerWithChain($state, $eliminated, 'eliminated_by_vote');
     }
 
     private function eliminateOrSpare(GameState $state, Player $target): ?\App\Game\Factions\FactionInterface
@@ -233,7 +237,7 @@ class VotingService
         return $this->eliminatePlayerWithChain($state, $target);
     }
 
-    private function eliminatePlayerWithChain(GameState $state, Player $player): ?\App\Game\Factions\FactionInterface
+    private function eliminatePlayerWithChain(GameState $state, Player $player, ?string $cause = 'eliminated_by_vote'): ?\App\Game\Factions\FactionInterface
     {
         $role = $player->role;
 
@@ -246,16 +250,16 @@ class VotingService
 
         $checkAngel = $role && $role->key === 'angel' && $state->round === 1;
 
-        return $this->applyDeathWithChain($state, $player, $checkAngel);
+        return $this->applyDeathWithChain($state, $player, $checkAngel, $cause);
     }
 
-    public function applyDeathWithChain(GameState $state, Player $player, bool $checkAngel = false): ?\App\Game\Factions\FactionInterface
+    public function applyDeathWithChain(GameState $state, Player $player, bool $checkAngel = false, ?string $cause = null): ?\App\Game\Factions\FactionInterface
     {
-        $toProcess = [[$player, $checkAngel]];
+        $toProcess = [[$player, $checkAngel, $cause ?? 'eliminated_by_vote']];
         $processedIds = [];
 
         while (!empty($toProcess)) {
-            [$current, $checkAngelForThis] = array_shift($toProcess);
+            [$current, $checkAngelForThis, $currentCause] = array_shift($toProcess);
             if (in_array($current->id, $processedIds)) continue;
             $processedIds[] = $current->id;
 
@@ -264,7 +268,7 @@ class VotingService
             if ($role && $role->key === 'hunter') {
                 $current->is_alive = false;
                 $current->save();
-                event(new PlayerEliminated($current));
+                event(new PlayerEliminated($current, $currentCause));
 
                 $winner = $this->winChecker->check($state);
                 if ($winner) return $winner;
@@ -290,7 +294,7 @@ class VotingService
                     $partner = Player::find($partnerId);
                     if ($partner && $partner->is_alive) {
                         event(new LoverDied($current, $partner));
-                        $toProcess[] = [$partner, false];
+                        $toProcess[] = [$partner, false, 'eliminated_by_lover'];
                     }
                 }
 
@@ -299,7 +303,7 @@ class VotingService
 
             $current->is_alive = false;
             $current->save();
-            event(new PlayerEliminated($current));
+            event(new PlayerEliminated($current, $currentCause));
 
             if ($checkAngelForThis && $role && $role->key === 'angel') {
                 $data = $state->data ?? [];
@@ -323,7 +327,7 @@ class VotingService
 
                 if ($partner && $partner->is_alive) {
                     event(new LoverDied($current, $partner));
-                    $toProcess[] = [$partner, false];
+                    $toProcess[] = [$partner, false, 'eliminated_by_lover'];
                 }
             }
         }
@@ -347,7 +351,7 @@ class VotingService
         if ($targetId) {
             $target = Player::find($targetId);
             if ($target && $target->is_alive) {
-                return $this->applyDeathWithChain($state, $target);
+                return $this->applyDeathWithChain($state, $target, false, 'eliminated_by_hunter');
             }
         }
 

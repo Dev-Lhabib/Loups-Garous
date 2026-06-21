@@ -55,58 +55,93 @@
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100">
             @if($submitted && $submittedAction && !$wantsMoreActions)
-                {{-- Action submitted - hold to see details --}}
-                <div x-data="{ showDetails: false }"
-                     x-on:mousedown.prevent="showDetails = true"
-                     x-on:mouseup="showDetails = false"
-                     x-on:mouseleave="showDetails = false"
-                     x-on:touchstart.prevent="showDetails = true"
-                     x-on:touchend="showDetails = false">
-                    <div x-show="!showDetails" class="py-4 space-y-3">
-                        <div class="w-14 h-14 mx-auto rounded-full bg-accent-gold/10 border-2 border-accent-gold/30 flex items-center justify-center animate-scaleCheck">
-                            <span class="text-2xl text-accent-gold">✓</span>
+                @if(!$hasNightAction)
+                    {{-- Passive role completed state --}}
+                    <div class="py-6 space-y-3">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-accent-green/10 border-2 border-accent-green/30 flex items-center justify-center animate-scaleCheck">
+                            <span class="text-3xl text-accent-green">✓</span>
                         </div>
-                        <p class="text-text-muted font-medium">{{ __('ui.action.submitted') }}</p>
-                        <p class="text-text-muted/40 text-xs">{{ __('ui.role.hold_to_reveal') }}</p>
+                        <p class="text-text-primary font-semibold">{{ __('ui.action.completed') }}</p>
+                        <p class="text-text-muted text-xs">{{ __('ui.action.passive_completed_hint') }}</p>
                     </div>
-                    <div x-show="showDetails" x-cloak class="py-4 space-y-3">
-                        @if($roleData)
-                            <div class="text-3xl">{{ $roleData['key'] === 'werewolf' ? '🐺' : ($roleData['key'] === 'seer' ? '👁️' : '🔮') }}</div>
-                            <p class="text-text-primary text-lg font-semibold">{{ $roleData['name'] }}</p>
-                            <p class="text-accent-gold font-medium">{{ __('ui.action.' . $submittedAction->action_type) }}</p>
-                            @if($submittedAction->target)
-                                <p class="text-accent-gold animate-fadeInScale">{{ $submittedAction->target->nickname }}</p>
+                @else
+                    {{-- Action submitted - hold to see details --}}
+                    <div x-data="{ showDetails: false }"
+                         x-on:mousedown.prevent="showDetails = true"
+                         x-on:mouseup="showDetails = false"
+                         x-on:mouseleave="showDetails = false"
+                         x-on:touchstart.prevent="showDetails = true"
+                         x-on:touchend="showDetails = false">
+                        <div x-show="!showDetails" class="py-4 space-y-3">
+                            <div class="w-14 h-14 mx-auto rounded-full bg-accent-gold/10 border-2 border-accent-gold/30 flex items-center justify-center animate-scaleCheck">
+                                <span class="text-2xl text-accent-gold">✓</span>
+                            </div>
+                            <p class="text-text-muted font-medium">{{ __('ui.action.submitted') }}</p>
+                            <p class="text-text-muted/40 text-xs">{{ __('ui.role.hold_to_reveal') }}</p>
+                        </div>
+                        <div x-show="showDetails" x-cloak class="py-4 space-y-3">
+                            @if($roleData)
+                                <div class="text-3xl">{{ $roleData['key'] === 'werewolf' ? '🐺' : ($roleData['key'] === 'seer' ? '👁️' : '🔮') }}</div>
+                                <p class="text-text-primary text-lg font-semibold">{{ $roleData['name'] }}</p>
+                                <p class="text-accent-gold font-medium">{{ __('ui.action.' . $submittedAction->action_type) }}</p>
+                                @if($submittedAction->target)
+                                    <p class="text-accent-gold animate-fadeInScale">{{ $submittedAction->target->nickname }}</p>
+                                @endif
                             @endif
-                        @endif
+                        </div>
                     </div>
-                </div>
+                @endif
 
             @elseif(!$hasNightAction)
-                {{-- No night action: Decoy puzzle --}}
-                <div x-data="{ revealed: false }"
-                     x-on:mousedown.prevent="revealed = true"
-                     x-on:mouseup="revealed = false"
-                     x-on:mouseleave="revealed = false"
-                     x-on:touchstart.prevent="revealed = true"
-                     x-on:touchend="revealed = false">
-                    <div x-show="!revealed" class="py-4 space-y-3">
-                        <div class="w-14 h-14 mx-auto rounded-full bg-accent-purple/10 border-2 border-accent-purple/30 flex items-center justify-center animate-floatSlow">
-                            <span class="text-2xl">🧩</span>
+                {{-- No night action: Confirm button first, then decoy --}}
+                @if($submitted && $submittedAction)
+                    {{-- Completed state --}}
+                    <div class="py-6 space-y-3">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-accent-green/10 border-2 border-accent-green/30 flex items-center justify-center animate-scaleCheck">
+                            <span class="text-3xl text-accent-green">✓</span>
                         </div>
-                        <p class="text-text-muted text-sm">{{ __('ui.game.decoy_prompt') }}</p>
-                        <p class="text-text-muted/40 text-xs">{{ __('ui.role.hold_to_reveal') }}</p>
+                        <p class="text-text-primary font-semibold">{{ __('ui.action.completed') }}</p>
+                        <p class="text-text-muted text-xs">{{ __('ui.action.passive_completed_hint') }}</p>
                     </div>
-                    <div x-show="revealed" x-cloak class="space-y-4">
-                        <div class="glass-panel border border-accent-purple/30 p-5">
-                            <p class="text-text-muted text-xs uppercase tracking-widest mb-3">{{ $decoy['type'] ?? 'puzzle' }}</p>
-                            <p class="text-text-primary text-lg font-medium">{{ $decoy['content'] ?? '' }}</p>
+                @elseif($passiveConfirmed)
+                    <div class="py-6 space-y-3">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-accent-green/10 border-2 border-accent-green/30 flex items-center justify-center animate-scaleCheck">
+                            <span class="text-3xl text-accent-green">✓</span>
                         </div>
-                        <button wire:click="refreshDecoy"
-                                class="px-4 py-2 bg-bg-surface border border-border-default text-text-muted text-sm rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-all duration-200">
-                            {{ __('ui.action.next_puzzle') }}
+                        <p class="text-text-primary font-semibold">{{ __('ui.action.completed') }}</p>
+                        <p class="text-text-muted text-xs">{{ __('ui.action.passive_completed_hint') }}</p>
+                    </div>
+                @else
+                    <div class="space-y-4">
+                        <div class="text-center space-y-3">
+                            <div class="w-14 h-14 mx-auto rounded-full bg-accent-purple/10 border-2 border-accent-purple/30 flex items-center justify-center animate-floatSlow">
+                                <span class="text-2xl">🧩</span>
+                            </div>
+                            <p class="text-text-primary font-medium">{{ __('ui.action.decoy_title') }}</p>
+                            <p class="text-text-muted text-xs">{{ __('ui.action.decoy_subtitle') }}</p>
+                        </div>
+                        <button wire:click="confirmPassive"
+                                class="w-full py-3 bg-accent-gold text-bg-primary font-bold rounded-lg hover:bg-accent-gold-dark transition-all duration-200 text-sm shadow-lg hover:scale-[1.02] active:scale-95">
+                            ✓ {{ __('ui.action.complete_action') }}
                         </button>
+                        <div x-data="{ showPuzzle: false }">
+                            <button @click="showPuzzle = !showPuzzle"
+                                    class="w-full text-center text-xs text-text-muted hover:text-accent-gold transition-colors">
+                                🧩 {{ __('ui.action.decoy_puzzle') }}
+                            </button>
+                            <div x-show="showPuzzle" x-cloak x-transition:enter="transition-all duration-200" class="mt-3 space-y-3">
+                                <div class="glass-panel border border-accent-purple/30 p-4">
+                                    <p class="text-text-muted text-xs uppercase tracking-widest mb-2">{{ $decoy['type'] ?? 'puzzle' }}</p>
+                                    <p class="text-text-primary text-base">{{ $decoy['content'] ?? '' }}</p>
+                                </div>
+                                <button wire:click="refreshDecoy"
+                                        class="px-4 py-2 bg-bg-surface border border-border-default text-text-muted text-sm rounded-lg hover:bg-bg-elevated hover:text-text-primary transition-all duration-200">
+                                    {{ __('ui.action.next_puzzle') }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                @endif
 
             @elseif($confirming && $selectedTargetId)
                 {{-- Confirmation --}}

@@ -108,6 +108,20 @@
                             </span>
                         @endif
                     </div>
+                    @if(count($teammatesData) > 0)
+                        <div class="w-full pt-2 mt-2 border-t border-border-default/40">
+                            <p class="text-[10px] uppercase tracking-widest text-accent-gold/70 font-semibold mb-1.5 text-center">{{ __('ui.role.your_team') }}</p>
+                            <div class="flex flex-wrap justify-center gap-2">
+                                @foreach($teammatesData as $mate)
+                                    <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-bg-elevated/50 text-xs">
+                                        <span class="text-text-primary font-medium">{{ $mate['nickname'] }}</span>
+                                        <span class="text-text-muted/50">·</span>
+                                        <span class="text-accent-gold">{{ $mate['role_name'] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>

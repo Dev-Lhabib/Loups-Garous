@@ -27,6 +27,7 @@ class NarratorDashboard extends Component
     public string $sidebarTab = 'status';
     public string $nightMode = 'parallel';
     public bool $showTimerConfig = false;
+    public bool $votingTransitionNeeded = false;
     public int $timerNightSeconds = 120;
     public int $timerDiscussionSeconds = 180;
     public int $timerVotingSeconds = 60;
@@ -135,14 +136,30 @@ class NarratorDashboard extends Component
             $data['second_vote_triggered'] = false;
             $this->state->data = $data;
             $this->state->save();
-            $service->advancePhase($this->state, 'day');
-            $this->state = $this->state->fresh();
-            $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'day']);
+            $this->votingTransitionNeeded = true;
         } else {
-            $service->advancePhase($this->state, 'night');
-            $this->state = $this->state->fresh();
-            $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'night']);
+            $this->votingTransitionNeeded = true;
         }
+    }
+
+    public function goToDayAfterVote()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->advancePhase($this->state, 'day');
+        $this->state = $this->state->fresh();
+        $this->votingTransitionNeeded = false;
+        $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'day']);
+    }
+
+    public function goToNightAfterVote()
+    {
+        $this->guardNarrator();
+        $service = app(NarratorControlService::class);
+        $service->advancePhase($this->state, 'night');
+        $this->state = $this->state->fresh();
+        $this->votingTransitionNeeded = false;
+        $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'night']);
     }
 
     public function endGame()
@@ -300,7 +317,7 @@ class NarratorDashboard extends Component
         }
 
         $this->state = $this->state->fresh();
-        $this->addLogEntry('player_eliminated', ['nickname' => $littleGirl->nickname]);
+        $this->addLogEntry('player_eliminated', ['nickname' => $littleGirl->nickname, 'cause_key' => 'eliminated_by_little_girl']);
         $this->refreshNightFeed();
     }
 
@@ -505,6 +522,7 @@ class NarratorDashboard extends Component
     {
         $this->addLogEntry('player_eliminated', [
             'nickname' => $payload['nickname'] ?? 'unknown',
+            'cause_key' => $payload['cause_key'] ?? null,
         ]);
     }
 
