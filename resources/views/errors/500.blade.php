@@ -4,7 +4,7 @@
 
 @section('icon')
     <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-accent-red/30 to-accent-red/5 border-2 border-accent-red/30 flex items-center justify-center">
-        <span class="text-3xl">⚙️</span>
+        <span class="text-3xl">🌑</span>
     </div>
 @endsection
 
