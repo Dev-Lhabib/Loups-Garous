@@ -160,13 +160,7 @@
                     <span class="text-base">👤</span>
                     <span>{{ __('ui.narrator.view_role') }}</span>
                 </button>
-                <template x-if="contextMenuPlayer?.is_alive && contextMenuPlayer?.phase === 'night'">
-                    <button @click="pid = contextMenuPlayer.id; contextMenuPlayer = null; $wire.skipPlayer(pid)"
-                            class="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-accent-gold hover:bg-bg-elevated rounded-lg transition-colors text-start">
-                        <span class="text-base">⏭️</span>
-                        <span>{{ __('ui.narrator.skip_player_action') }}</span>
-                    </button>
-                </template>
+
             </div>
         </div>
     </div>
@@ -276,29 +270,32 @@
                     @endif
 
                 @elseif($phase === 'day')
-                    <button wire:click="startVoting"
-                            wire:confirm="{{ __('ui.narrator.confirm_start_voting') }}"
-                            class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
-                                   bg-accent-red text-white hover:bg-accent-red-dark hover:scale-105 active:scale-95">
-                        🗳️ {{ __('ui.narrator.start_voting') }}
-                    </button>
+                    @php
+                        $firstDayVoting = $room->settings['first_day_voting'] ?? true;
+                        $canVoteToday = $firstDayVoting || $state->round > 1;
+                    @endphp
+                    @if($canVoteToday)
+                        <button wire:click="startVoting"
+                                wire:confirm="{{ __('ui.narrator.confirm_start_voting') }}"
+                                class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                       bg-accent-red text-white hover:bg-accent-red-dark hover:scale-105 active:scale-95">
+                            🗳️ {{ __('ui.narrator.start_voting') }}
+                        </button>
+                    @else
+                        <div class="text-center px-4 py-3 rounded-lg bg-bg-elevated border border-border-default">
+                            <p class="text-xs text-text-muted">{{ __('ui.narrator.first_day_voting_blocked') }}</p>
+                        </div>
+                    @endif
 
                 @elseif($phase === 'voting')
                     @if($votingTransitionNeeded)
                         <div class="flex flex-col gap-2">
                             <p class="text-xs text-text-muted text-center">{{ __('ui.narrator.vote_resolved_choose_next') }}</p>
-                            <div class="flex gap-2">
-                                <button wire:click="goToDayAfterVote"
-                                        class="flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
-                                               bg-accent-gold text-bg-primary hover:scale-105 active:scale-95">
-                                    ☀️ {{ __('ui.narrator.go_to_day') }}
-                                </button>
-                                <button wire:click="goToNightAfterVote"
-                                        class="flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
-                                               bg-accent-blue text-white hover:bg-accent-blue-dark hover:scale-105 active:scale-95">
-                                    🌙 {{ __('ui.narrator.go_to_night') }}
-                                </button>
-                            </div>
+                            <button wire:click="goToNightAfterVote"
+                                    class="px-5 py-2.5 rounded-lg font-semibold transition-all duration-200 text-sm shadow-lg
+                                           bg-accent-blue text-white hover:bg-accent-blue-dark hover:scale-105 active:scale-95">
+                                🌙 {{ __('ui.narrator.go_to_night') }}
+                            </button>
                         </div>
                     @else
                         <button wire:click="endVoting"
@@ -736,40 +733,33 @@
                             </div>
                         </div>
 
-                        {{-- TAB: Night --}}
+                        {{-- TAB: Night — only shows night actions --}}
                         <div x-show="sidebarTab === 'night'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
                             <div class="space-y-3">
                                 @if($phase === 'night')
-                    @if(empty($nightActionFeed))
-                        <div class="text-center py-8">
-                            <p class="text-text-muted text-xs">{{ __('ui.narrator.no_actions_yet') }}</p>
-                        </div>
-                    @else
-                        <div class="space-y-2" x-ref="nightFeed" x-effect="$nextTick(() => { if ($refs.nightFeed) { const el = $refs.nightFeed.closest('.overflow-y-auto') || $refs.nightFeed.parentElement; if (el) el.scrollTop = el.scrollHeight; }})">
-                            <h4 class="text-xs uppercase tracking-wider text-accent-blue font-semibold">{{ __('ui.narrator.action_feed') }}</h4>
-                            @foreach($nightActionFeed as $action)
-                                <div class="text-xs bg-bg-surface/30 rounded-lg px-3 py-2 border border-border-default flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <x-role-icon :roleKey="$action['role_key']" class="text-sm" />
-                                        <span class="text-text-primary font-medium">{{ $action['player_nickname'] }}</span>
-                                    </div>
-                                    <div>
-                                        @if($action['target_nickname'])
-                                            <span class="text-text-muted">→</span>
-                                            <span class="text-accent-gold">{{ $action['target_nickname'] }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                                @elseif($phase === 'voting')
-                                    <x-vote-tally
-                                        :tally="$voteTally"
-                                        :voteCount="$voteCount"
-                                        :totalVoters="$totalActivePlayers"
-                                        :players="$players"
-                                    />
+                                    @if(empty($nightActionFeed))
+                                        <div class="text-center py-8">
+                                            <p class="text-text-muted text-xs">{{ __('ui.narrator.no_actions_yet') }}</p>
+                                        </div>
+                                    @else
+                                        <div class="space-y-2" x-ref="nightFeed" x-effect="$nextTick(() => { if ($refs.nightFeed) { const el = $refs.nightFeed.closest('.overflow-y-auto') || $refs.nightFeed.parentElement; if (el) el.scrollTop = el.scrollHeight; }})">
+                                            <h4 class="text-xs uppercase tracking-wider text-accent-blue font-semibold">{{ __('ui.narrator.action_feed') }}</h4>
+                                            @foreach($nightActionFeed as $action)
+                                                <div class="text-xs bg-bg-surface/30 rounded-lg px-3 py-2 border border-border-default flex items-center justify-between">
+                                                    <div class="flex items-center gap-2">
+                                                        <x-role-icon :roleKey="$action['role_key']" class="text-sm" />
+                                                        <span class="text-text-primary font-medium">{{ $action['player_nickname'] }}</span>
+                                                    </div>
+                                                    <div>
+                                                        @if($action['target_nickname'])
+                                                            <span class="text-text-muted">→</span>
+                                                            <span class="text-accent-gold">{{ $action['target_nickname'] }}</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 @else
                                     <div class="text-center py-12">
                                         <p class="text-text-muted text-xs">{{ __('ui.narrator.no_actions_yet') }}</p>
@@ -778,19 +768,48 @@
                             </div>
                         </div>
 
-                        {{-- TAB: Voting --}}
+                        {{-- TAB: Voting — narrator sees tally + voter names --}}
                         <div x-show="sidebarTab === 'voting'" x-transition:enter="transition-all duration-200" x-transition:enter-start="opacity-0">
                             <div class="space-y-3">
                                 @if($phase === 'voting')
                                     <h4 class="text-xs uppercase tracking-wider text-accent-red font-semibold">{{ __('ui.narrator.voting_progress') }}</h4>
-                                    <x-vote-tally
-                                        :tally="$voteTally"
-                                        :voteCount="$voteCount"
-                                        :totalVoters="$totalActivePlayers"
-                                        :players="$players"
-                                    />
-                                    <div class="text-xs text-text-muted text-center">
-                                        {{ $voteCount }}/{{ $totalActivePlayers }} {{ __('ui.vote.cast') }}
+                                    <div class="bg-bg-surface/30 rounded-lg p-3">
+                                        <div class="flex items-center justify-between text-xs mb-1">
+                                            <span class="text-text-muted">{{ __('ui.vote.cast') }}</span>
+                                            <span class="font-mono font-semibold text-accent-red">{{ $voteCount }}/{{ $totalActivePlayers }}</span>
+                                        </div>
+                                        <div class="h-2 bg-bg-surface rounded-full overflow-hidden">
+                                            <div class="h-full bg-accent-red rounded-full transition-all duration-500"
+                                                 style="width: {{ $totalActivePlayers > 0 ? ($voteCount / $totalActivePlayers) * 100 : 0 }}%">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 max-h-80 overflow-y-auto scrollbar-thin">
+                                        @forelse($voteTally as $targetId => $count)
+                                            @php
+                                                $targetPlayer = $players->firstWhere('id', $targetId);
+                                                $targetNick = $targetPlayer?->nickname ?? __('ui.vote.player_unknown', ['id' => $targetId]);
+                                                $voters = $voteVoters[$targetId] ?? [];
+                                            @endphp
+                                            <div class="bg-bg-surface/30 rounded-lg p-3 border border-border-default">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-text-primary font-semibold text-sm">{{ $targetNick }}</span>
+                                                    <span class="text-accent-red font-mono text-xs font-bold">{{ $count }} {{ __('ui.vote.votes') }}</span>
+                                                </div>
+                                                @if(!empty($voters))
+                                                    <div class="text-[10px] text-text-muted">
+                                                        <span class="uppercase tracking-wider">{{ __('ui.narrator.voted_by') }}:</span>
+                                                        <div class="flex flex-wrap gap-1 mt-1">
+                                                            @foreach($voters as $voterNick)
+                                                                <span class="px-1.5 py-0.5 bg-bg-elevated/50 rounded text-text-secondary">{{ $voterNick }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @empty
+                                            <p class="text-text-muted text-xs text-center py-6 italic">{{ __('ui.vote.no_votes_yet') }}</p>
+                                        @endforelse
                                     </div>
                                 @else
                                     <div class="text-center py-12">

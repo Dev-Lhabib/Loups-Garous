@@ -279,6 +279,21 @@ class ActionResolver
                 $state->save();
             }
 
+            // Hunter — if killed, apply pre-selected target
+            if ($role && $role->key === 'hunter') {
+                $data = $state->data ?? [];
+                $hunterTargetId = $data['hunter_pre_target_id'] ?? null;
+                if ($hunterTargetId && $hunterTargetId !== $playerId) {
+                    $hunterTarget = Player::find($hunterTargetId);
+                    if ($hunterTarget && $hunterTarget->is_alive && !in_array($hunterTargetId, $processed)) {
+                        $data['hunter_shot_used'] = true;
+                        $state->data = $data;
+                        $state->save();
+                        $toProcess[] = [$hunterTargetId, 'eliminated_by_hunter'];
+                    }
+                }
+            }
+
             $eliminatedNicknames[] = $player->nickname;
             $player->is_alive = false;
             $player->save();

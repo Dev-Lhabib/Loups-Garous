@@ -32,6 +32,9 @@ class VotingPanel extends Component
         $state = $room->gameState;
         if (!$state || $state->phase !== 'voting') return;
 
+        $firstDayVoting = $room->settings['first_day_voting'] ?? true;
+        if (!$firstDayVoting && $state->round === 1) return;
+
         $this->alivePlayers = Player::where('room_id', $room->id)
             ->where('is_alive', true)
             ->where('is_narrator', false)
@@ -102,6 +105,11 @@ class VotingPanel extends Component
         $state = $this->room->gameState;
 
         if (!$this->player->is_alive || $this->player->is_narrator || ($state && $state->phase !== 'voting')) {
+            return '<div></div>';
+        }
+
+        $firstDayVoting = $this->room->settings['first_day_voting'] ?? true;
+        if (!$firstDayVoting && $state && $state->round === 1) {
             return '<div></div>';
         }
 

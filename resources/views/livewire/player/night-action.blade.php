@@ -250,7 +250,7 @@
                 @endif
 
             @else
-                {{-- Target selection --}}
+                {{-- Target selection with visual feedback --}}
                 <div class="space-y-4">
                     <div class="flex flex-col items-center gap-3 text-center">
                         <div class="text-3xl animate-floatSlow">🎯</div>
@@ -261,14 +261,30 @@
                             <p class="text-text-muted text-xs mt-1">{{ __('ui.night.choose_carefully') }}</p>
                         </div>
                     </div>
+                    @if($selectedTargetId)
+                        @php $previewTarget = collect($alivePlayers)->firstWhere('id', $selectedTargetId); @endphp
+                        <div class="bg-accent-gold/10 border-2 border-accent-gold/50 rounded-xl p-3 text-center animate-fadeInScale">
+                            <p class="text-text-muted text-[10px] uppercase tracking-widest">{{ __('ui.action.selected') }}</p>
+                            <p class="text-text-primary text-lg font-bold mt-1">{{ $previewTarget['nickname'] ?? '' }}</p>
+                        </div>
+                    @endif
                     <div class="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
                         @foreach($alivePlayers as $p)
+                            @php $isSel = $selectedTargetId == $p['id']; @endphp
                             <button wire:click="selectTarget('{{ $p['id'] }}')"
-                                    class="w-full px-4 py-3 bg-bg-surface/50 text-text-primary rounded-lg hover:bg-bg-elevated hover:border-accent-gold/30 border border-border-default transition-all duration-200 text-start flex items-center gap-3 group">
-                                <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary group-hover:text-accent-gold transition-colors">
+                                    class="w-full px-4 py-3 rounded-lg transition-all duration-200 text-start flex items-center gap-3 group
+                                           {{ $isSel
+                                               ? 'bg-accent-gold/15 border-2 border-accent-gold/50 text-accent-gold font-semibold shadow-lg scale-[1.02]'
+                                               : 'bg-bg-surface/50 text-text-primary hover:bg-bg-elevated hover:border-accent-gold/30 border border-border-default' }}">
+                                <div class="w-8 h-8 rounded-full bg-bg-elevated flex items-center justify-center text-xs font-bold
+                                            {{ $isSel ? 'text-accent-gold bg-accent-gold/20' : 'text-text-secondary group-hover:text-accent-gold' }}
+                                            transition-colors">
                                     {{ strtoupper(substr($p['nickname'], 0, 1)) }}
                                 </div>
-                                <span class="font-medium group-hover:translate-x-[var(--tx-hover)] transition-transform duration-150">{{ $p['nickname'] }}</span>
+                                <span class="font-medium {{ $isSel ? 'text-accent-gold' : 'group-hover:translate-x-0.5' }} transition-transform duration-150">{{ $p['nickname'] }}</span>
+                                @if($isSel)
+                                    <span class="ms-auto text-accent-gold text-lg">✓</span>
+                                @endif
                             </button>
                         @endforeach
                     </div>

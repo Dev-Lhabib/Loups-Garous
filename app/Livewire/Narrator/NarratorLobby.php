@@ -47,8 +47,7 @@ class NarratorLobby extends Component
 
         $this->room = $room;
 
-        $ngrokUrl = $room->settings['ngrok_url'] ?? env('APP_URL', 'http://localhost');
-        $this->joinUrl = rtrim($ngrokUrl, '/') . '/join/' . $room->code;
+        $this->joinUrl = rtrim(config('app.url'), '/') . '/join/' . $room->code;
         $this->qrSvg = QrHelper::generate($this->joinUrl);
 
         $this->expectedPlayerCount = $room->settings['expected_player_count'] ?? 9;

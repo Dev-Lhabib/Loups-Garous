@@ -293,41 +293,44 @@
                         <p class="text-text-muted/60 text-xs mt-2">{{ __('ui.game.you_are_dead_subtitle') }}</p>
                     </div>
 
-                @elseif($state->phase === 'night' && !$player->is_narrator)
-                    {{-- Night progress bar --}}
-                    @if($nightProgressTotal > 0)
-                        <div class="w-full max-w-md glass-panel border border-border-default p-3 animate-fadeInUp">
-                            <div class="flex items-center justify-between text-xs mb-2">
-                                <span class="text-text-muted">{{ __('ui.night.night_progress') }}</span>
-                                <span class="font-mono font-semibold {{ $nightProgressDone >= $nightProgressTotal ? 'text-accent-green' : 'text-accent-gold' }}">
-                                    {{ $nightProgressDone }}/{{ $nightProgressTotal }}
-                                </span>
-                            </div>
-                            <div class="h-1.5 bg-bg-surface rounded-full overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500 ease-out
-                                            {{ $nightProgressDone >= $nightProgressTotal ? 'bg-accent-green' : 'bg-accent-gold' }}"
-                                     style="width: {{ ($nightProgressDone / $nightProgressTotal) * 100 }}%">
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                                @foreach($nightProgress as $roleKey => $rp)
-                                    @php
-                                        $emoji = match($roleKey) {
-                                            'werewolf' => '🐺', 'big_bad_wolf' => '🐺', 'accursed_wolf_father' => '🐺',
-                                            'white_werewolf' => '🐺', 'bodyguard' => '🛡️', 'seer' => '🔮',
-                                            'witch' => '🧪', 'pied_piper' => '🎵', 'fox' => '🦊',
-                                            'cupid' => '💘', 'wolf_hound' => '🐕', default => '❓',
-                                        };
-                                    @endphp
-                                    <span class="text-[10px] flex items-center gap-1 {{ $rp['completed'] ? 'text-accent-green' : 'text-text-muted' }}">
-                                        <span>{{ $emoji }}</span>
-                                        <span>{{ $rp['done'] }}/{{ $rp['total'] }}</span>
-                                    </span>
-                                @endforeach
-                            </div>
+                @elseif($isHunter && $player->is_alive && !in_array($state->phase, ['waiting', 'finished']))
+                    {{-- Hunter: pre-select target --}}
+                    <div class="w-full max-w-md glass-panel border border-accent-gold/30 p-3 animate-fadeInUp">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-lg">🏹</span>
+                            <span class="text-xs font-semibold text-text-muted uppercase tracking-wider">{{ __('ui.hunter.pre_select_title') }}</span>
                         </div>
-                    @endif
+                        @if($hunterPreTargetId)
+                            @php $hunterPreTarget = \App\Models\Player::find($hunterPreTargetId); @endphp
+                            <div class="flex items-center justify-between bg-accent-red/10 border border-accent-red/30 rounded-lg px-3 py-2 mb-2">
+                                <span class="text-sm text-text-primary font-medium">
+                                    🎯 {{ $hunterPreTarget?->nickname ?? __('ui.game.unknown') }}
+                                </span>
+                                <button wire:click="clearHunterTarget"
+                                        class="text-xs text-text-muted hover:text-accent-red transition-colors">
+                                    {{ __('ui.button.clear') }}
+                                </button>
+                            </div>
+                        @else
+                            <p class="text-xs text-text-muted mb-2">{{ __('ui.hunter.pre_select_hint') }}</p>
+                        @endif
+                        <div class="space-y-1 max-h-40 overflow-y-auto scrollbar-thin">
+                            @foreach(\App\Models\Player::where('room_id', $room->id)->where('is_alive', true)->where('is_narrator', false)->where('id', '!=', $player->id)->orderBy('nickname')->get() as $hp)
+                                @php $isSelected = $hunterPreTargetId == $hp->id; @endphp
+                                <button wire:click="selectHunterTarget('{{ $hp->id }}')"
+                                        class="w-full px-3 py-2 rounded-lg text-start flex items-center gap-2 text-xs transition-all duration-200
+                                               {{ $isSelected
+                                                   ? 'bg-accent-red/20 border border-accent-red/40 text-accent-red font-semibold'
+                                                   : 'bg-bg-surface/50 border border-border-default text-text-primary hover:bg-bg-elevated' }}">
+                                    <span>{{ $isSelected ? '🎯' : '🏹' }}</span>
+                                    <span>{{ $hp->nickname }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
 
+                    {{-- Night phase continues below --}}
+                @elseif($state->phase === 'night' && !$player->is_narrator)
                     {{-- Sequential night mode: show "Stay asleep" if not active --}}
                     @if($isSequentialNight && $player->role && $player->role->night_order !== null && $activeNightRole !== $player->role->key)
                         <div class="glass-panel border border-border-default p-8 text-center animate-fadeInUp">
@@ -421,7 +424,7 @@
                         </div>
                     </div>
 
-                @elseif($state->phase === 'voting' && !$player->is_narrator)
+                @elseif($state->phase === 'voting' && !$player->is_narrator && ($room->settings['first_day_voting'] ?? true || $state->round > 1))
                     @php
                         $data = $state->data ?? [];
                         $isScapegoatDecreePending = !empty($data['scapegoat_decree_pending']) && ($data['scapegoat_decree_player_id'] ?? null) === $player->id;

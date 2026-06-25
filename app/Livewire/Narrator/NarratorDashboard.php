@@ -72,6 +72,9 @@ class NarratorDashboard extends Component
     {
         $this->guardNarrator();
         $service = app(NarratorControlService::class);
+
+        $this->autoSkipPendingPlayers();
+
         $service->resolveNightOnly($this->state);
         $this->state = $this->state->fresh();
         $this->refreshNightFeed();
@@ -105,6 +108,14 @@ class NarratorDashboard extends Component
     public function startVoting()
     {
         $this->guardNarrator();
+
+        $firstDayVoting = $this->room->settings['first_day_voting'] ?? true;
+        if (!$firstDayVoting && $this->state->round === 1) {
+            $this->addLogEntry('phase_blocked', ['reason' => 'first_day_voting_disabled']);
+            session()->flash('error', __('ui.narrator.first_day_voting_blocked'));
+            return;
+        }
+
         $service = app(NarratorControlService::class);
         $service->advancePhase($this->state, 'voting');
         $this->state = $this->state->fresh();
@@ -140,16 +151,6 @@ class NarratorDashboard extends Component
         } else {
             $this->votingTransitionNeeded = true;
         }
-    }
-
-    public function goToDayAfterVote()
-    {
-        $this->guardNarrator();
-        $service = app(NarratorControlService::class);
-        $service->advancePhase($this->state, 'day');
-        $this->state = $this->state->fresh();
-        $this->votingTransitionNeeded = false;
-        $this->addLogEntry('phase_changed', ['from' => 'voting', 'to' => 'day']);
     }
 
     public function goToNightAfterVote()
@@ -232,10 +233,24 @@ class NarratorDashboard extends Component
         $this->refreshNightFeed();
     }
 
+    private function autoSkipPendingPlayers(): void
+    {
+        $service = app(NarratorControlService::class);
+        foreach ($this->pendingRoles as $pending) {
+            $player = Player::find($pending['player_id']);
+            if ($player && $player->is_alive) {
+                $service->skipPlayerNightAction($player, $this->state);
+            }
+        }
+    }
+
     public function forceEndNight()
     {
         $this->guardNarrator();
         $service = app(NarratorControlService::class);
+
+        $this->autoSkipPendingPlayers();
+
         $service->forceEndNight($this->state);
         $this->state = $this->state->fresh();
         $this->refreshNightFeed();
@@ -579,12 +594,14 @@ class NarratorDashboard extends Component
         $totalAlive = $players->where('is_alive', true)->count();
 
         $voteTally = [];
+        $voteVoters = [];
         $voteCount = 0;
         if ($phase === 'voting') {
-            $votes = Vote::where('game_state_id', $this->state->id)->get();
+            $votes = Vote::where('game_state_id', $this->state->id)->with('voter')->get();
             $voteCount = $votes->count();
             foreach ($votes as $v) {
                 $voteTally[$v->target_id] = ($voteTally[$v->target_id] ?? 0) + 1;
+                $voteVoters[$v->target_id][] = $v->voter?->nickname ?? __('ui.game.unknown');
             }
             arsort($voteTally);
         }
@@ -643,6 +660,7 @@ class NarratorDashboard extends Component
             'totalAlive' => $totalAlive,
             'phase' => $phase,
             'voteTally' => $voteTally,
+            'voteVoters' => $voteVoters,
             'voteCount' => $voteCount,
             'loverMap' => $loverMap,
             'enchantedIds' => $enchantedIds,

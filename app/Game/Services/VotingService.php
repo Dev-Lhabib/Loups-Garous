@@ -274,14 +274,17 @@ class VotingService
                 if ($winner) return $winner;
 
                 $data = $state->data ?? [];
-                $data['pending_hunter_action'] = true;
-                $data['pending_hunter_id'] = $current->id;
-                $data['pending_hunter_target_id'] = null;
-                $data['pending_hunter_timeout'] = now()->addSeconds(30)->toIso8601String();
-                $state->data = $data;
-                $state->save();
+                $hunterTargetId = $data['hunter_pre_target_id'] ?? null;
 
-                event(new HunterActionPending($state, $current));
+                if ($hunterTargetId) {
+                    $hunterTarget = Player::find($hunterTargetId);
+                    if ($hunterTarget && $hunterTarget->is_alive && $hunterTarget->id !== $current->id) {
+                        $data['hunter_shot_used'] = true;
+                        $state->data = $data;
+                        $state->save();
+                        $toProcess[] = [$hunterTargetId, false, 'eliminated_by_hunter'];
+                    }
+                }
 
                 $bond = CoupleBond::where('game_state_id', $state->id)
                     ->where(function ($q) use ($current) {

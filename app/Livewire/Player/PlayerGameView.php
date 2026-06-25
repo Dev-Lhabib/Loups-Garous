@@ -20,6 +20,8 @@ class PlayerGameView extends Component
     public array $scapegoatDecreeBanned = [];
     public bool $scapegoatDecreeSubmitted = false;
     public bool $pendingHunterAction = false;
+    public bool $isHunter = false;
+    public ?string $hunterPreTargetId = null;
     public ?int $timerRemaining = null;
 
     public function mount(Room $room)
@@ -46,6 +48,8 @@ class PlayerGameView extends Component
         $data = $this->state?->data ?? [];
         $this->ready = in_array($this->player->id, $data['players_ready'] ?? []);
         $this->paused = !empty($data['paused']);
+        $this->isHunter = $this->player->role && $this->player->role->key === 'hunter';
+        $this->hunterPreTargetId = $data['hunter_pre_target_id'] ?? null;
         $this->refreshTimer();
     }
 
@@ -173,6 +177,7 @@ class PlayerGameView extends Component
     {
         $this->paused = !empty($payload['paused']);
         $this->state = $this->room?->gameState;
+        $this->dispatch('game-paused', paused: $this->paused);
     }
 
     public function dismissResult(string $type): void
@@ -275,6 +280,33 @@ class PlayerGameView extends Component
 
         $this->pendingHunterAction = false;
         $this->state = $this->room->gameState;
+    }
+
+    public function selectHunterTarget(string $targetId): void
+    {
+        if (!$this->player->is_alive) return;
+        if (!$this->isHunter) return;
+
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        $data['hunter_pre_target_id'] = $targetId;
+        $state->data = $data;
+        $state->save();
+        $this->hunterPreTargetId = $targetId;
+    }
+
+    public function clearHunterTarget(): void
+    {
+        $state = $this->room->gameState;
+        if (!$state) return;
+
+        $data = $state->data ?? [];
+        unset($data['hunter_pre_target_id']);
+        $state->data = $data;
+        $state->save();
+        $this->hunterPreTargetId = null;
     }
 
     public function checkGameState(): void
@@ -457,9 +489,6 @@ class PlayerGameView extends Component
                     'isSequentialNight' => false,
                     'activeNightRole' => null,
                     'canActNow' => true,
-                    'nightProgress' => [],
-                    'nightProgressTotal' => 0,
-                    'nightProgressDone' => 0,
                 ])->layout('layouts.app');
             }
         }
@@ -511,18 +540,6 @@ class PlayerGameView extends Component
             $canActNow = $activeNightRole === $this->player->role->key;
         }
 
-        $nightProgress = [];
-        $nightProgressTotal = 0;
-        $nightProgressDone = 0;
-        if ($this->state->phase === 'night') {
-            $progressTracker = app(ProgressTracker::class);
-            $nightProgress = $progressTracker->getNightActionProgress($this->state);
-            foreach ($nightProgress as $rp) {
-                $nightProgressTotal += $rp['total'];
-                $nightProgressDone += $rp['done'];
-            }
-        }
-
         return view('livewire.player.player-game-view', [
             'state' => $this->state,
             'players' => $players,
@@ -536,9 +553,9 @@ class PlayerGameView extends Component
             'isSequentialNight' => $isSequentialNight,
             'activeNightRole' => $activeNightRole,
             'canActNow' => $canActNow,
-            'nightProgress' => $nightProgress,
-            'nightProgressTotal' => $nightProgressTotal,
-            'nightProgressDone' => $nightProgressDone,
+            'nightProgress' => [],
+            'nightProgressTotal' => 0,
+            'nightProgressDone' => 0,
         ])->layout('layouts.app');
     }
 }
