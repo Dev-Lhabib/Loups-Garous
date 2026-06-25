@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Player;
 
+use App\Exceptions\GameActionException;
 use App\Models\GameState;
 use App\Models\NightAction as NightActionModel;
 use App\Models\Player;
@@ -114,7 +115,11 @@ class NightRolePanel extends Component
         if ($this->actionCompleted) return;
 
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
@@ -128,13 +133,17 @@ class NightRolePanel extends Component
             return;
         }
 
-        $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => $actionTypeToSubmit,
-            'target_id' => $this->selectedTargetId,
-        ]);
+        try {
+            $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => $actionTypeToSubmit,
+                'target_id' => $this->selectedTargetId,
+            ]);
 
-        if ($result) {
-            $this->actionCompleted = true;
+            if ($result) {
+                $this->actionCompleted = true;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
 
         $this->closePanel();
@@ -145,20 +154,28 @@ class NightRolePanel extends Component
         if ($this->actionCompleted) return;
 
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
         if ($this->witchSaveUsed || !$this->selectedTargetId) return;
 
-        $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => 'save',
-            'target_id' => $this->selectedTargetId,
-        ]);
+        try {
+            $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => 'save',
+                'target_id' => $this->selectedTargetId,
+            ]);
 
-        if ($result) {
-            $this->witchSaveUsed = true;
-            $this->actionCompleted = true;
+            if ($result) {
+                $this->witchSaveUsed = true;
+                $this->actionCompleted = true;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
 
         $this->closePanel();
@@ -169,20 +186,28 @@ class NightRolePanel extends Component
         if ($this->actionCompleted) return;
 
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
         if ($this->witchPoisonUsed || !$this->selectedTargetId) return;
 
-        $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => 'poison',
-            'target_id' => $this->selectedTargetId,
-        ]);
+        try {
+            $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => 'poison',
+                'target_id' => $this->selectedTargetId,
+            ]);
 
-        if ($result) {
-            $this->witchPoisonUsed = true;
-            $this->actionCompleted = true;
+            if ($result) {
+                $this->witchPoisonUsed = true;
+                $this->actionCompleted = true;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
 
         $this->closePanel();
@@ -215,7 +240,11 @@ class NightRolePanel extends Component
         if (!$state || $state->phase !== 'night') return;
 
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $submitted = NightActionModel::where('game_state_id', $state->id)
             ->where('player_id', $this->player->id)
@@ -224,18 +253,22 @@ class NightRolePanel extends Component
             ->exists();
         if ($submitted) return;
 
-        $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => 'kill',
-            'target_id' => $this->agreedTargetId,
-        ]);
+        try {
+            $result = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => 'kill',
+                'target_id' => $this->agreedTargetId,
+            ]);
 
-        if ($result) {
-            $this->actionCompleted = true;
+            if ($result) {
+                $this->actionCompleted = true;
 
-            $data = $state->data ?? [];
-            unset($data['werewolf_kill_selections'][$this->player->id]);
-            $state->data = $data;
-            $state->save();
+                $data = $state->data ?? [];
+                unset($data['werewolf_kill_selections'][$this->player->id]);
+                $state->data = $data;
+                $state->save();
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
 
         $this->closePanel();

@@ -13,13 +13,19 @@ class IdentifyPlayer
         $token = $request->cookie('session_token');
 
         if (!$token) {
-            abort(401);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => __('errors.session_expired')], 401);
+            }
+            return redirect(route('home'))->with('error', __('errors.session_expired'));
         }
 
         $player = Player::where('session_token', $token)->first();
 
         if (!$player) {
-            abort(401);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => __('errors.session_expired')], 401);
+            }
+            return redirect(route('home'))->with('error', __('errors.session_expired'));
         }
 
         $request->merge(['_player' => $player]);

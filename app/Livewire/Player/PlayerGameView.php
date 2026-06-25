@@ -248,7 +248,11 @@ class PlayerGameView extends Component
     public function submitHunterAction(string $targetId): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state) return;
@@ -333,7 +337,11 @@ class PlayerGameView extends Component
     public function submitDecree(): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state) return;
@@ -357,7 +365,11 @@ class PlayerGameView extends Component
     public function triggerSecondVote(): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'voting') return;
@@ -381,7 +393,11 @@ class PlayerGameView extends Component
     public function acceptSwap(): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state) return;
@@ -390,7 +406,10 @@ class PlayerGameView extends Component
         if (empty($data['devoted_servant_swap_pending'])) return;
 
         $role = $this->player->role;
-        if (!$role || $role->key !== 'devoted_servant') abort(403);
+        if (!$role || $role->key !== 'devoted_servant') {
+            session()->flash('error', __('errors.access_denied'));
+            return;
+        }
 
         $votingService = app(VotingService::class);
         $winner = $votingService->acceptDevotedServantSwap($state, $this->player);
@@ -407,7 +426,11 @@ class PlayerGameView extends Component
     public function declineSwap(): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state) return;
@@ -416,7 +439,10 @@ class PlayerGameView extends Component
         if (empty($data['devoted_servant_swap_pending'])) return;
 
         $role = $this->player->role;
-        if (!$role || $role->key !== 'devoted_servant') abort(403);
+        if (!$role || $role->key !== 'devoted_servant') {
+            session()->flash('error', __('errors.access_denied'));
+            return;
+        }
 
         $votingService = app(VotingService::class);
         $winner = $votingService->declineDevotedServantSwap($state);

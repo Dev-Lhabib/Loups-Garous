@@ -33,6 +33,20 @@
     <div class="min-h-screen flex flex-col relative z-10">
         <x-app-header />
         <main class="flex-1">
+            {{-- Flash message banner --}}
+            @if(session('error'))
+                <div class="fixed top-4 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+                    <div class="max-w-md w-full bg-accent-red/95 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-2xl border border-accent-red/50 flex items-center gap-3 pointer-events-auto animate-fadeInUp"
+                         x-data="{ show: true }"
+                         x-show="show"
+                         x-init="setTimeout(() => show = false, 6000)">
+                        <span class="flex-shrink-0 text-lg">⚠️</span>
+                        <p class="flex-1">{{ session('error') }}</p>
+                        <button @click="show = false" class="flex-shrink-0 text-white/70 hover:text-white transition-colors">&times;</button>
+                    </div>
+                </div>
+            @endif
+
             {{ $slot ?? '' }}
             @yield('content', '')
         </main>

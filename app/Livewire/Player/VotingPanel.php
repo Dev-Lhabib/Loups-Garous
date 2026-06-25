@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Player;
 
+use App\Exceptions\GameActionException;
 use App\Game\Services\VotingService;
 use App\Models\Player;
 use App\Models\Room;
@@ -61,7 +62,11 @@ class VotingPanel extends Component
     public function confirmVote()
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'voting' || !$this->player->is_alive) return;
@@ -71,11 +76,16 @@ class VotingPanel extends Component
         $target = Player::find($this->selectedTargetId);
         if (!$target) return;
 
-        $service = app(VotingService::class);
-        $result = $service->submitVote($this->player, $target, $state);
+        try {
+            $service = app(VotingService::class);
+            $result = $service->submitVote($this->player, $target, $state);
 
-        if ($result) {
-            $this->submitted = true;
+            if ($result) {
+                $this->submitted = true;
+                $this->confirming = false;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
             $this->confirming = false;
         }
     }

@@ -24,7 +24,11 @@ class WerewolfKillPanel extends Component
     public function mount(Room $room, Player $player)
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $this->room = $room;
         $this->player = $player->fresh(['role']);

@@ -7,6 +7,7 @@ use App\Events\LoverDied;
 use App\Events\PlayerEliminated;
 use App\Events\VillageIdiotRevealed;
 use App\Events\VoteSubmitted;
+use App\Exceptions\GameActionException;
 use App\Game\Engine\WinConditionChecker;
 use App\Models\CoupleBond;
 use App\Models\GameState;
@@ -23,30 +24,30 @@ class VotingService
 
     public function submitVote(Player $voter, Player $target, GameState $state): ?Vote
     {
-        if ($voter->is_narrator) abort(403);
-        if (!$voter->is_alive) abort(403);
-        if ($voter->voting_banned) abort(403);
-        if ($state->phase !== 'voting') abort(403);
+        if ($voter->is_narrator) throw new GameActionException('errors.narrator_cannot_vote');
+        if (!$voter->is_alive) throw new GameActionException('errors.dead_cannot_vote');
+        if ($voter->voting_banned) throw new GameActionException('errors.voting_banned');
+        if ($state->phase !== 'voting') throw new GameActionException('errors.voting_not_active');
 
         $stateData = $state->data ?? [];
-        if (!empty($stateData['paused'])) abort(403, 'Game is paused');
+        if (!empty($stateData['paused'])) throw new GameActionException('errors.game_paused');
 
         $room = $state->room;
         $firstDayVoting = $room->settings['first_day_voting'] ?? true;
-        if (!$firstDayVoting && $state->round === 1) abort(403, 'First day voting is disabled');
+        if (!$firstDayVoting && $state->round === 1) throw new GameActionException('errors.first_day_voting_disabled');
 
         $data = $state->data ?? [];
         $voteBanList = $data['vote_ban_next_round'] ?? [];
-        if (in_array($voter->id, $voteBanList)) abort(403);
+        if (in_array($voter->id, $voteBanList)) throw new GameActionException('errors.vote_ban_list');
 
         $alreadyVoted = Vote::where('game_state_id', $state->id)
             ->where('voter_id', $voter->id)
             ->exists();
         if ($alreadyVoted) return null;
 
-        if (!$target->is_alive) abort(403);
-        if ($target->id === $voter->id) abort(403);
-        if ($target->room_id !== $voter->room_id) abort(403);
+        if (!$target->is_alive) throw new GameActionException('errors.target_dead');
+        if ($target->id === $voter->id) throw new GameActionException('errors.target_self');
+        if ($target->room_id !== $voter->room_id) throw new GameActionException('errors.target_wrong_room');
 
         $vote = Vote::create([
             'game_state_id' => $state->id,

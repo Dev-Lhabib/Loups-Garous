@@ -572,7 +572,8 @@ class NarratorDashboard extends Component
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || !$requestPlayer->is_narrator || $requestPlayer->room_id !== $this->room->id) {
             event(new SuspiciousAccessAttempt($requestPlayer ?? $this->player, 'Non-narrator attempted narrator action'));
-            abort(403);
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
         }
     }
 

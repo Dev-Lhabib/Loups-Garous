@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Player;
 
+use App\Exceptions\GameActionException;
 use App\Models\NightAction as NightActionModel;
 use App\Models\Player;
 use App\Models\Room;
@@ -135,23 +136,31 @@ class NightAction extends Component
     public function confirmWolfHoundSide(): void
     {
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
 
-        $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => 'choose_side',
-            'metadata' => ['side' => $this->wolfHoundSide],
-        ]);
+        try {
+            $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => 'choose_side',
+                'metadata' => ['side' => $this->wolfHoundSide],
+            ]);
 
-        if ($action) {
-            $this->submittedActions[] = 'choose_side';
-            $this->submitted = true;
-            $this->submittedAction = $action;
-            $this->confirming = false;
-            $this->wolfHoundSide = null;
-            $this->wantsMoreActions = false;
+            if ($action) {
+                $this->submittedActions[] = 'choose_side';
+                $this->submitted = true;
+                $this->submittedAction = $action;
+                $this->confirming = false;
+                $this->wolfHoundSide = null;
+                $this->wantsMoreActions = false;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
     }
 
@@ -161,19 +170,27 @@ class NightAction extends Component
         if ($this->passiveConfirmed) return;
 
         $requestPlayer = $this->resolvePlayerFromSession();
-        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) abort(403);
+        if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
+        }
 
         $state = $this->room->gameState;
         if (!$state || $state->phase !== 'night' || !$this->player->is_alive) return;
 
-        $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => 'passive_action',
-        ]);
+        try {
+            $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => 'passive_action',
+            ]);
 
-        if ($action) {
-            $this->passiveConfirmed = true;
-            $this->submitted = true;
-            $this->submittedAction = $action;
+            if ($action) {
+                $this->passiveConfirmed = true;
+                $this->submitted = true;
+                $this->submittedAction = $action;
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
     }
 
@@ -225,7 +242,9 @@ class NightAction extends Component
     {
         $requestPlayer = $this->resolvePlayerFromSession();
         if (!$requestPlayer || $requestPlayer->id !== $this->player->id) {
-            abort(403);
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
         }
 
         $state = $this->room->gameState;
@@ -239,19 +258,23 @@ class NightAction extends Component
         $actionType = $this->currentActionType;
         if (!$actionType) return;
 
-        $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
-            'action_type' => $actionType,
-            'target_id' => $this->selectedTargetId,
-        ]);
+        try {
+            $action = app(\App\Game\Services\ActionService::class)->submit($this->player, [
+                'action_type' => $actionType,
+                'target_id' => $this->selectedTargetId,
+            ]);
 
-        if ($action) {
-            $this->submittedActions[] = $actionType;
-            $this->submitted = true;
-            $this->submittedAction = $action;
-            $this->confirming = false;
+            if ($action) {
+                $this->submittedActions[] = $actionType;
+                $this->submitted = true;
+                $this->submittedAction = $action;
+                $this->confirming = false;
 
-            $remainingTypes = array_diff($this->getActionTypesForRole($role->key), $this->submittedActions);
-            $this->wantsMoreActions = !empty($remainingTypes);
+                $remainingTypes = array_diff($this->getActionTypesForRole($role->key), $this->submittedActions);
+                $this->wantsMoreActions = !empty($remainingTypes);
+            }
+        } catch (GameActionException $e) {
+            session()->flash('error', $e->getMessage());
         }
     }
 

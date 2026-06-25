@@ -266,7 +266,9 @@ class NarratorLobby extends Component
     {
         $player = Player::where('session_token', request()->cookie('session_token'))->first();
         if (!$player || !$player->is_narrator || $player->room_id !== $this->room->id) {
-            abort(403);
+            session()->flash('error', __('errors.access_denied'));
+            $this->redirect(route('home'));
+            return;
         }
 
         $errors = app(LobbyService::class)->validateGameStart($this->room);

@@ -3,6 +3,7 @@
 namespace App\Game\Services;
 
 use App\Events\NightActionSubmitted;
+use App\Exceptions\GameActionException;
 use App\Models\GameState;
 use App\Models\NightAction;
 use App\Models\Player;
@@ -12,21 +13,21 @@ class ActionService
 {
     public function submit(Player $player, array $data): ?NightAction
     {
-        if ($player->is_narrator) abort(403);
-        if (!$player->is_alive) abort(403);
+        if ($player->is_narrator) throw new GameActionException('errors.narrator_cannot_act');
+        if (!$player->is_alive) throw new GameActionException('errors.dead_cannot_act');
 
         $room = $player->room;
         $state = $room->gameState;
-        if (!$state || $state->phase !== 'night') abort(403);
+        if (!$state || $state->phase !== 'night') throw new GameActionException('errors.not_night_phase');
 
         $stateData = $state->data ?? [];
-        if (!empty($stateData['paused'])) abort(403, 'Game is paused');
+        if (!empty($stateData['paused'])) throw new GameActionException('errors.game_paused');
 
         $actionType = $data['action_type'];
         $role = $player->role;
-        if (!$role) abort(403);
+        if (!$role) throw new GameActionException('errors.role_not_found');
 
-        if (!$this->roleCanPerformAction($role, $actionType)) abort(403);
+        if (!$this->roleCanPerformAction($role, $actionType)) throw new GameActionException('errors.role_no_permission');
 
         $alreadySubmitted = NightAction::where('game_state_id', $state->id)
             ->where('player_id', $player->id)
@@ -39,8 +40,8 @@ class ActionService
         $target = $data['target_id'] ? Player::find($data['target_id']) : null;
 
         if ($target) {
-            if ($target->room_id !== $player->room_id) abort(403);
-            if (!$target->is_alive) abort(403);
+            if ($target->room_id !== $player->room_id) throw new GameActionException('errors.target_wrong_room_action');
+            if (!$target->is_alive) throw new GameActionException('errors.target_dead_action');
         }
 
         $action = NightAction::create([
